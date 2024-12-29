@@ -1,9 +1,8 @@
-// src/server.js
+// backend/src/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-
 const authRoutes = require('./routes/authRoutes');
 const rideRoutes = require('./routes/rideRoutes');
 
