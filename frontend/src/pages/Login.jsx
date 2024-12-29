@@ -1,37 +1,28 @@
-// src/pages/Login.jsx
+// frontend/src/pages/Login.jsx
 import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { login } = useAuth();
+    const { handleAuthCallback } = useAuth();
 
-    useEffect(() => {
-        // Handle the callback from CAS
-        const handleCASCallback = async () => {
-            const params = new URLSearchParams(location.search);
-            const token = params.get('token');
+    // For development: Use test login instead of CAS
+    const handleTestLogin = async () => {
+        try {
+            const response = await axios.post('http://localhost:3001/api/auth/test-login');
+            const { token, user } = response.data;
             
             if (token) {
-                try {
-                    await login({ token });
-                    navigate('/rides');
-                } catch (error) {
-                    console.error('Login error:', error);
-                }
+                localStorage.setItem('token', token);
+                await handleAuthCallback(token);
+                navigate('/rides');
             }
-        };
-
-        if (location.pathname === '/auth/success') {
-            handleCASCallback();
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Login failed. Please try again.');
         }
-    }, [location, login, navigate]);
-
-    const handleLogin = () => {
-        // Redirect to backend CAS login route
-        window.location.href = 'http://localhost:3001/api/auth/cas/login';
     };
 
     return (
@@ -40,12 +31,16 @@ const Login = () => {
                 <h2 className="text-2xl font-bold text-center mb-8">
                     Login to TigerShare
                 </h2>
+                {/* Development login button */}
                 <button
-                    onClick={handleLogin}
-                    className="w-full bg-princeton-orange text-white py-3 rounded-md font-medium hover:bg-princeton-orange/90 transition-colors"
+                    onClick={handleTestLogin}
+                    className="w-full bg-princeton-orange text-white py-3 rounded-md font-medium hover:bg-princeton-orange/90 transition-colors mb-4"
                 >
-                    Login with Princeton NetID
+                    Development Login (Test User)
                 </button>
+                <p className="mt-4 text-sm text-gray-600 text-center">
+                    Use test login for development purposes
+                </p>
             </div>
         </div>
     );
