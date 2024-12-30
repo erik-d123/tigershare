@@ -9,29 +9,46 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            // Validate token and get user info
-            axios.get('http://localhost:3001/api/auth/profile', {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-                .then(response => {
-                    setUser(response.data);
-                })
-                .catch(() => {
+        const verifyToken = async () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await axios.get('http://localhost:3001/api/auth/verify', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setUser(response.data.user);
+                } catch (error) {
+                    console.error('Token verification error:', error);
                     localStorage.removeItem('token');
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        } else {
+                    setUser(null);
+                }
+            } else {
+                setUser(null);
+            }
             setLoading(false);
-        }
+        };
+
+        verifyToken();
     }, []);
 
-    const login = async () => {
-        // Redirect to Princeton CAS login
-        window.location.href = 'http://localhost:3001/api/auth/cas/login';
+    const handleAuthCallback = async (token) => {
+        try {
+            if (!token) {
+                throw new Error('No token provided');
+            }
+
+            const response = await axios.get('http://localhost:3001/api/auth/verify', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setUser(response.data.user);
+            return response.data.user;
+        } catch (error) {
+            console.error('Auth callback error:', error);
+            localStorage.removeItem('token');
+            setUser(null);
+            throw error;
+        }
     };
 
     const logout = () => {
@@ -39,19 +56,16 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
-    const handleAuthCallback = async (token) => {
-        if (token) {
-            localStorage.setItem('token', token);
-            const response = await axios.get('http://localhost:3001/api/auth/profile', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setUser(response.data);
-            return response.data;
-        }
+    const value = {
+        user,
+        loading,
+        handleAuthCallback,
+        logout,
+        isAuthenticated: !!user
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, handleAuthCallback }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

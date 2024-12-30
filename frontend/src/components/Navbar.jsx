@@ -24,12 +24,14 @@ const Navbar = () => {
                                 >
                                     Find Rides
                                 </Link>
-                                <Link
-                                    to="/rides/create"
-                                    className="text-white hover:bg-princeton-black/10 px-3 py-2 rounded-md text-sm font-medium"
-                                >
-                                    Post a Ride
-                                </Link>
+                                {user && (
+                                    <Link
+                                        to="/rides/create"
+                                        className="text-white hover:bg-princeton-black/10 px-3 py-2 rounded-md text-sm font-medium"
+                                    >
+                                        Post a Ride
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -37,6 +39,12 @@ const Navbar = () => {
                     <div className="flex items-center">
                         {user ? (
                             <div className="flex items-center space-x-4">
+                                <Link
+                                    to="/profile"
+                                    className="text-white hover:bg-princeton-black/10 px-3 py-2 rounded-md text-sm font-medium"
+                                >
+                                    Profile
+                                </Link>
                                 <span className="text-white text-sm">{user.netid}</span>
                                 <button
                                     onClick={logout}

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const { sendSMS } = require('../utils/twilioClient');
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -30,10 +31,12 @@ router.get('/', async (req, res) => {
             SELECT r.*, 
                    u.netid as creator_netid,
                    u.full_name as creator_name,
+                   u.phone_number as creator_phone,
                    (SELECT COUNT(*) FROM ride_participants WHERE ride_id = r.id) as current_participants
             FROM rides r
             JOIN users u ON r.creator_id = u.id
             WHERE status = 'active'
+            AND departure_time > NOW() - INTERVAL '1 hour'
         `;
         const queryParams = [];
 
@@ -57,43 +60,17 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get a specific ride by ID
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const ride = await db.query(
-            `SELECT r.*, 
-                    u.netid as creator_netid,
-                    u.full_name as creator_name,
-                    (SELECT COUNT(*) FROM ride_participants WHERE ride_id = r.id) as current_participants
-             FROM rides r
-             JOIN users u ON r.creator_id = u.id
-             WHERE r.id = $1`,
-            [id]
-        );
-
-        if (ride.rows.length === 0) {
-            return res.status(404).json({ message: 'Ride not found' });
-        }
-
-        res.json(ride.rows[0]);
-    } catch (error) {
-        console.error('Get ride error:', error);
-        res.status(500).json({ message: 'Error fetching ride' });
-    }
-});
-
 // Create a new ride
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { destination, departure_time, available_seats, notes } = req.body;
+        const { destination, departure_time, available_seats, total_fare, notes } = req.body;
         const creator_id = req.user.id;
 
         const result = await db.query(
-            `INSERT INTO rides (creator_id, destination, departure_time, available_seats, notes)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO rides (creator_id, destination, departure_time, available_seats, total_fare, notes, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'active')
              RETURNING *`,
-            [creator_id, destination, departure_time, available_seats, notes]
+            [creator_id, destination, departure_time, available_seats, total_fare, notes]
         );
 
         res.status(201).json(result.rows[0]);
@@ -103,100 +80,153 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Join a ride
-router.post('/:rideId/join', authenticateToken, async (req, res) => {
+// Request to join a ride
+router.post('/:rideId/request', authenticateToken, async (req, res) => {
     try {
         const { rideId } = req.params;
-        const user_id = req.user.id;
+        const requesterId = req.user.id;
 
-        // Check if ride exists and has available seats
-        const ride = await db.query(
+        // Get ride and participant info
+        const rideInfo = await db.query(
+            `SELECT r.*, 
+                    u.phone_number as host_phone, 
+                    u.full_name as host_name,
+                    r2.full_name as requester_name,
+                    r2.phone_number as requester_phone
+             FROM rides r
+             JOIN users u ON r.creator_id = u.id
+             JOIN users r2 ON r2.id = $1
+             WHERE r.id = $2`,
+            [requesterId, rideId]
+        );
+
+        if (rideInfo.rows.length === 0) {
+            return res.status(404).json({ message: 'Ride not found' });
+        }
+
+        const ride = rideInfo.rows[0];
+
+        // Check if already requested
+        const existingRequest = await db.query(
+            'SELECT * FROM ride_requests WHERE ride_id = $1 AND requester_id = $2',
+            [rideId, requesterId]
+        );
+
+        if (existingRequest.rows.length > 0) {
+            return res.status(400).json({ message: 'Already requested to join this ride' });
+        }
+
+        // Create request
+        await db.query(
+            'INSERT INTO ride_requests (ride_id, requester_id, status) VALUES ($1, $2, $3)',
+            [rideId, requesterId, 'pending']
+        );
+
+        // Send SMS to host
+        if (ride.host_phone) {
+            await sendSMS(
+                ride.host_phone,
+                `${ride.requester_name} wants to join your ride to ${ride.destination}. ` +
+                `Reply ACCEPT${rideId}-${requesterId} to approve or DENY${rideId}-${requesterId} to reject.`
+            );
+        }
+
+        res.json({ message: 'Request sent to ride host' });
+    } catch (error) {
+        console.error('Request error:', error);
+        res.status(500).json({ message: 'Error sending request' });
+    }
+});
+
+// Handle SMS webhook for ride responses
+router.post('/sms-webhook', async (req, res) => {
+    try {
+        const { Body, From } = req.body;
+        const match = Body.trim().match(/^(ACCEPT|DENY)(\d+)-(\d+)$/i);
+        
+        if (!match) {
+            return res.status(400).json({ message: 'Invalid response format' });
+        }
+
+        const [, action, rideId, requesterId] = match;
+        const isApproved = action.toUpperCase() === 'ACCEPT';
+
+        if (isApproved) {
+            // Add to participants
+            await db.query(
+                'INSERT INTO ride_participants (ride_id, user_id) VALUES ($1, $2)',
+                [rideId, requesterId]
+            );
+
+            // Send confirmation to requester
+            const rideInfo = await db.query(
+                `SELECT r.destination, u.phone_number as requester_phone, h.phone_number as host_phone
+                 FROM rides r
+                 JOIN users u ON u.id = $1
+                 JOIN users h ON h.id = r.creator_id
+                 WHERE r.id = $2`,
+                [requesterId, rideId]
+            );
+
+            if (rideInfo.rows[0].requester_phone) {
+                await sendSMS(
+                    rideInfo.rows[0].requester_phone,
+                    `Your ride request to ${rideInfo.rows[0].destination} was approved! ` +
+                    `Contact your ride host at: ${rideInfo.rows[0].host_phone}`
+                );
+            }
+        }
+
+        // Update request status
+        await db.query(
+            'UPDATE ride_requests SET status = $1 WHERE ride_id = $2 AND requester_id = $3',
+            [isApproved ? 'approved' : 'rejected', rideId, requesterId]
+        );
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('SMS webhook error:', error);
+        res.status(500).json({ message: 'Error processing response' });
+    }
+});
+
+// Get rides created by user
+router.get('/created-by/:userId', authenticateToken, async (req, res) => {
+    try {
+        const rides = await db.query(
             `SELECT r.*, 
                     (SELECT COUNT(*) FROM ride_participants WHERE ride_id = r.id) as current_participants
              FROM rides r
-             WHERE r.id = $1 AND r.status = 'active'`,
-            [rideId]
+             WHERE r.creator_id = $1
+             ORDER BY r.departure_time DESC`,
+            [req.params.userId]
         );
-
-        if (ride.rows.length === 0) {
-            return res.status(404).json({ message: 'Ride not found or inactive' });
-        }
-
-        if (ride.rows[0].current_participants >= ride.rows[0].available_seats) {
-            return res.status(400).json({ message: 'Ride is full' });
-        }
-
-        // Check if user is already in the ride
-        const existingParticipant = await db.query(
-            'SELECT * FROM ride_participants WHERE ride_id = $1 AND user_id = $2',
-            [rideId, user_id]
-        );
-
-        if (existingParticipant.rows.length > 0) {
-            return res.status(400).json({ message: 'You are already in this ride' });
-        }
-
-        // Join the ride
-        await db.query(
-            'INSERT INTO ride_participants (ride_id, user_id) VALUES ($1, $2)',
-            [rideId, user_id]
-        );
-
-        res.json({ message: 'Successfully joined ride' });
+        res.json(rides.rows);
     } catch (error) {
-        console.error('Join ride error:', error);
-        res.status(500).json({ message: 'Error joining ride' });
+        console.error('Get created rides error:', error);
+        res.status(500).json({ message: 'Error fetching rides' });
     }
 });
 
-// Leave a ride
-router.post('/:rideId/leave', authenticateToken, async (req, res) => {
+// Get rides joined by user
+router.get('/joined-by/:userId', authenticateToken, async (req, res) => {
     try {
-        const { rideId } = req.params;
-        const user_id = req.user.id;
-
-        const result = await db.query(
-            'DELETE FROM ride_participants WHERE ride_id = $1 AND user_id = $2',
-            [rideId, user_id]
+        const rides = await db.query(
+            `SELECT r.*, 
+                    u.netid as creator_netid,
+                    u.full_name as creator_name,
+                    (SELECT COUNT(*) FROM ride_participants WHERE ride_id = r.id) as current_participants
+             FROM rides r
+             JOIN users u ON r.creator_id = u.id
+             JOIN ride_participants rp ON r.id = rp.ride_id
+             WHERE rp.user_id = $1 AND r.status = 'active'
+             ORDER BY r.departure_time DESC`,
+            [req.params.userId]
         );
-
-        if (result.rowCount === 0) {
-            return res.status(400).json({ message: 'You are not in this ride' });
-        }
-
-        res.json({ message: 'Successfully left ride' });
+        res.json(rides.rows);
     } catch (error) {
-        console.error('Leave ride error:', error);
-        res.status(500).json({ message: 'Error leaving ride' });
-    }
-});
-
-// Cancel a ride (only creator can cancel)
-router.post('/:rideId/cancel', authenticateToken, async (req, res) => {
-    try {
-        const { rideId } = req.params;
-        const user_id = req.user.id;
-
-        // Check if user is the creator
-        const ride = await db.query(
-            'SELECT * FROM rides WHERE id = $1 AND creator_id = $2',
-            [rideId, user_id]
-        );
-
-        if (ride.rows.length === 0) {
-            return res.status(403).json({ message: 'Not authorized to cancel this ride' });
-        }
-
-        // Cancel the ride
-        await db.query(
-            "UPDATE rides SET status = 'cancelled' WHERE id = $1",
-            [rideId]
-        );
-
-        res.json({ message: 'Ride cancelled successfully' });
-    } catch (error) {
-        console.error('Cancel ride error:', error);
-        res.status(500).json({ message: 'Error cancelling ride' });
+        console.error('Get joined rides error:', error);
+        res.status(500).json({ message: 'Error fetching rides' });
     }
 });
 

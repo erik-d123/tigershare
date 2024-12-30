@@ -20,5 +20,16 @@ pool.connect((err) => {
 });
 
 module.exports = {
-    query: (text, params) => pool.query(text, params),
+    query: async (text, params) => {
+        try {
+            const start = Date.now();
+            const res = await pool.query(text, params);
+            const duration = Date.now() - start;
+            console.log('Executed query', { text, duration, rows: res.rowCount });
+            return res;
+        } catch (error) {
+            console.error('Database query error:', error);
+            throw error;
+        }
+    }
 };
