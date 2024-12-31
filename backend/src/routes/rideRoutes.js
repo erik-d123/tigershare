@@ -64,17 +64,20 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get rides created by user
+// Rides created by user
 router.get('/created-by/:userId', authenticateToken, async (req, res) => {
     try {
+        console.log('Fetching created rides for user:', req.params.userId);
         const rides = await db.query(
             `SELECT r.*, 
                     (SELECT COUNT(*) FROM ride_participants WHERE ride_id = r.id) as current_participants
              FROM rides r
              WHERE r.creator_id = $1
+             AND r.status = 'active'
              ORDER BY r.departure_time DESC`,
             [req.params.userId]
         );
+        console.log('Found created rides:', rides.rows.length);
         res.json(rides.rows);
     } catch (error) {
         console.error('Get created rides error:', error);
