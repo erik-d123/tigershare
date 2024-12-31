@@ -12,72 +12,101 @@ const Profile = () => {
     const [myJoinedRides, setMyJoinedRides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [isEditingPhone, setIsEditingPhone] = useState(false);
-    const [updateMessage, setUpdateMessage] = useState('');
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Fetch user's phone number
-                const userResponse = await axios.get(
-                    'http://localhost:3001/api/users/profile',
+    const fetchUserRides = async () => {
+        try {
+            const [createdResponse, joinedResponse] = await Promise.all([
+                axios.get(
+                    `http://localhost:3001/api/rides/created-by/${user.id}`,
                     {
                         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                     }
-                );
-                setPhoneNumber(userResponse.data.phone_number || '');
+                ),
+                axios.get(
+                    `http://localhost:3001/api/rides/joined-by/${user.id}`,
+                    {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    }
+                )
+            ]);
 
-                // Fetch rides
-                const [createdResponse, joinedResponse] = await Promise.all([
-                    axios.get(
-                        `http://localhost:3001/api/rides/created-by/${user.id}`,
-                        {
-                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                        }
-                    ),
-                    axios.get(
-                        `http://localhost:3001/api/rides/joined-by/${user.id}`,
-                        {
-                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                        }
-                    )
-                ]);
+            setMyCreatedRides(createdResponse.data);
+            setMyJoinedRides(joinedResponse.data);
+            setLoading(false);
+        } catch (err) {
+            console.error('Error fetching rides:', err);
+            setError('Error fetching rides');
+            setLoading(false);
+        }
+    };
 
-                setMyCreatedRides(createdResponse.data);
-                setMyJoinedRides(joinedResponse.data);
-            } catch (err) {
-                setError('Error fetching data');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
+    useEffect(() => {
         if (user) {
-            fetchData();
+            fetchUserRides();
         }
     }, [user]);
 
-    const handleUpdatePhone = async () => {
+    const handleCancelRide = async (rideId) => {
+        if (!window.confirm('Are you sure you want to cancel this ride?')) {
+            return;
+        }
+
         try {
             await axios.post(
-                'http://localhost:3001/api/users/update-phone',
-                { phoneNumber },
+                `http://localhost:3001/api/rides/${rideId}/cancel`,
+                {},
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 }
             );
-            setIsEditingPhone(false);
-            setUpdateMessage('Phone number updated successfully!');
-            setTimeout(() => setUpdateMessage(''), 3000);
+            
+            // Refresh the rides data
+            await fetchUserRides();
+            alert('Ride cancelled successfully');
         } catch (error) {
-            setUpdateMessage('Error updating phone number');
-            console.error(error);
+            console.error('Cancel ride error:', error);
+            alert(error.response?.data?.message || 'Error canceling ride');
         }
     };
 
-    // ... rest of the Profile component code ...
+    const handleLeaveRide = async (rideId) => {
+        if (!window.confirm('Are you sure you want to leave this ride?')) {
+            return;
+        }
+
+        try {
+            await axios.post(
+                `http://localhost:3001/api/rides/${rideId}/leave`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }
+            );
+            
+            // Refresh the rides data
+            await fetchUserRides();
+            alert('Successfully left the ride');
+        } catch (error) {
+            console.error('Leave ride error:', error);
+            alert(error.response?.data?.message || 'Error leaving ride');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-princeton-orange"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-red-500">{error}</div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -91,55 +120,89 @@ const Profile = () => {
                         <p><span className="font-medium">NetID:</span> {user.netid}</p>
                         <p><span className="font-medium">Email:</span> {user.email}</p>
                         <p><span className="font-medium">Name:</span> {user.full_name}</p>
-                        
-                        {/* Phone Number Section */}
-                        <div className="mt-4">
-                            <div className="flex items-center">
-                                <span className="font-medium">Phone Number: </span>
-                                {isEditingPhone ? (
-                                    <div className="flex items-center ml-2">
-                                        <input
-                                            type="tel"
-                                            value={phoneNumber}
-                                            onChange={(e) => setPhoneNumber(e.target.value)}
-                                            placeholder="Enter phone number"
-                                            className="px-2 py-1 border rounded-md"
-                                        />
-                                        <button
-                                            onClick={handleUpdatePhone}
-                                            className="ml-2 px-3 py-1 bg-princeton-orange text-white rounded-md text-sm"
-                                        >
-                                            Save
-                                        </button>
-                                        <button
-                                            onClick={() => setIsEditingPhone(false)}
-                                            className="ml-2 px-3 py-1 bg-gray-300 text-gray-700 rounded-md text-sm"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center ml-2">
-                                        <span>{phoneNumber || 'Not set'}</span>
-                                        <button
-                                            onClick={() => setIsEditingPhone(true)}
-                                            className="ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm"
-                                        >
-                                            Edit
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            {updateMessage && (
-                                <p className={`mt-2 text-sm ${updateMessage.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>
-                                    {updateMessage}
-                                </p>
-                            )}
-                        </div>
                     </div>
                 </div>
 
-                {/* Rest of the Profile component (Rides sections) ... */}
+                {/* Rides I'm Hosting */}
+                <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Rides I'm Hosting</h2>
+                    {myCreatedRides.length === 0 ? (
+                        <p className="text-gray-500">You haven't created any rides yet.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {myCreatedRides.map(ride => (
+                                <div key={ride.id} className="border rounded-lg p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-semibold">{ride.destination}</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                {parseInt(ride.current_participants)}/{parseInt(ride.available_seats)} seats filled
+                                            </p>
+                                            {ride.total_fare && (
+                                                <p className="text-sm text-gray-600">
+                                                    Total fare: ${ride.total_fare}
+                                                </p>
+                                            )}
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                Status: <span className={`font-medium ${ride.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {ride.status}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        {ride.status === 'active' && (
+                                            <button
+                                                onClick={() => handleCancelRide(ride.id)}
+                                                className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                            >
+                                                Cancel Ride
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Rides I've Joined */}
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Rides I've Joined</h2>
+                    {myJoinedRides.length === 0 ? (
+                        <p className="text-gray-500">You haven't joined any rides yet.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {myJoinedRides.map(ride => (
+                                <div key={ride.id} className="border rounded-lg p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-semibold">{ride.destination}</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                Posted by: {ride.creator_name}
+                                            </p>
+                                            {ride.total_fare && (
+                                                <p className="text-sm text-gray-600">
+                                                    Total fare: ${ride.total_fare}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => handleLeaveRide(ride.id)}
+                                            className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                        >
+                                            Leave Ride
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
