@@ -86,7 +86,7 @@ router.get('/cas/callback', async (req, res) => {
     }
 });
 
-// Test login endpoint (for development)
+// Test login endpoint
 router.post('/test-login', async (req, res) => {
     try {
         console.log('Attempting test login...');

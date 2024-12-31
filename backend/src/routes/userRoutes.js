@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
-// Authentication middleware (same as before)
+// Authentication middleware
 const authenticateToken = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -42,7 +42,7 @@ router.post('/set-name', authenticateToken, async (req, res) => {
     }
 });
 
-// Check if user needs to set name
+// Check if user needs to set name (need to fix)
 router.get('/needs-name', authenticateToken, async (req, res) => {
     try {
         const result = await db.query(
