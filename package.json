@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "TigerShare ride sharing application",
   "scripts": {
+    "heroku-postbuild": "cd frontend && npm install && npm run build",
     "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    
   },
   "dependencies": {
     "concurrently": "^8.2.2"

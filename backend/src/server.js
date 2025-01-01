@@ -1,8 +1,8 @@
-// backend/src/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const path = require('path'); // Import 'path' to handle static file paths
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -41,6 +41,17 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+    // Path to the frontend's built files
+    app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+    // Catch-all route to serve the frontend's index.html
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+    });
+}
 
 // Health check route
 app.get('/health', (req, res) => {
