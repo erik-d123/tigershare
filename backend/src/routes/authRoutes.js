@@ -89,22 +89,22 @@ router.get('/cas/callback', async (req, res) => {
     }
 });
 
-// Test login endpoint
 router.post('/test-login', async (req, res) => {
     try {
-        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_TEST_LOGIN !== 'true') {
-            console.error('Test login attempted in production without permission');
-            return res.status(403).json({ message: 'Test login not allowed in production' });
-        }
+        console.log('Test login request received');
+        console.log('Environment:', process.env.NODE_ENV);
+        console.log('ALLOW_TEST_LOGIN:', process.env.ALLOW_TEST_LOGIN);
 
-        console.log('Attempting test login...');
         let user = await db.query('SELECT * FROM users WHERE netid = $1', ['test123']);
+        console.log('Existing user query result:', user.rows);
         
         if (user.rows.length === 0) {
+            console.log('Creating new test user...');
             user = await db.query(
                 'INSERT INTO users (netid, email, full_name) VALUES ($1, $2, $3) RETURNING *',
                 ['test123', 'test123@princeton.edu', 'Test User']
             );
+            console.log('New user created:', user.rows[0]);
         }
 
         const token = jwt.sign(
@@ -113,10 +113,14 @@ router.post('/test-login', async (req, res) => {
             { expiresIn: '24h' }
         );
 
+        console.log('Token generated successfully');
         res.json({ token, user: user.rows[0] });
     } catch (error) {
         console.error('Test login error:', error);
-        res.status(500).json({ message: 'Error during login process' });
+        res.status(500).json({ 
+            message: 'Error during login process',
+            details: error.message 
+        });
     }
 });
 

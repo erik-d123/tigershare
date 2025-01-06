@@ -46,15 +46,18 @@ const Login = () => {
     const handleTestLogin = async () => {
         try {
             setLoading(true);
+            console.log('Starting test login request...');
             const response = await axios.post('/api/auth/test-login');
-            const { token } = response.data;
+            console.log('Test login response:', response.data);
             
+            const { token } = response.data;
             if (token) {
                 localStorage.setItem('token', token);
                 await handleAuthCallback(token);
                 navigate('/rides');
             }
         } catch (error) {
+            console.error('Test login error details:', error.response?.data || error.message);
             setError('Login failed. Please try again.');
         } finally {
             setLoading(false);
