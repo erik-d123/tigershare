@@ -1,9 +1,8 @@
+// frontend/src/config/axios.js
 import axios from 'axios';
 
 const instance = axios.create({
-    baseURL: process.env.NODE_ENV === 'production' 
-        ? '' 
-        : 'http://localhost:3001',
+    baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api'
 });
 
 // Add request interceptor for logging

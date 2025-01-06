@@ -23,14 +23,14 @@ const RidesList = () => {
                 if (destination) params.append('destination', destination);
                 if (date) params.append('date', date);
                 
-                const response = await axios.get(`/api/rides?${params}`);
+                const response = await axios.get(`rides`); // axios config will add /api prefix
                 console.log('Rides API response:', response.data);
                 return response.data;
             } catch (err) {
                 console.error('Error fetching rides:', err);
                 throw err;
             }
-        }
+}
     });
 
     // Debugging logs
