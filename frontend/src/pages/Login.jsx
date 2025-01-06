@@ -1,7 +1,7 @@
 // frontend/src/pages/Login.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../config/axios';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
@@ -33,7 +33,6 @@ const Login = () => {
         processAuthCallback();
     }, [location, handleAuthCallback, navigate]);
 
-    // Redirect if already logged in
     useEffect(() => {
         if (user) {
             navigate('/rides');
@@ -41,13 +40,13 @@ const Login = () => {
     }, [user, navigate]);
 
     const handleCASLogin = () => {
-        window.location.href = 'http://localhost:3001/api/auth/cas/login';
+        window.location.href = '/api/auth/cas/login';
     };
 
     const handleTestLogin = async () => {
         try {
             setLoading(true);
-            const response = await axios.post('http://localhost:3001/api/auth/test-login');
+            const response = await axios.post('/api/auth/test-login');
             const { token } = response.data;
             
             if (token) {

@@ -12,8 +12,11 @@ router.get('/cas/login', (req, res) => {
         console.log('Initiating Princeton CAS login...');
         const casLoginUrl = `${process.env.CAS_URL}/login`;
         const serviceUrl = `${process.env.BACKEND_URL}/api/auth/cas/callback`;
-        console.log('Redirecting to:', casLoginUrl);
+        
+        // Log the URLs for debugging
+        console.log('CAS Login URL:', casLoginUrl);
         console.log('Service URL:', serviceUrl);
+        
         res.redirect(`${casLoginUrl}?service=${encodeURIComponent(serviceUrl)}`);
     } catch (error) {
         console.error('CAS login error:', error);
