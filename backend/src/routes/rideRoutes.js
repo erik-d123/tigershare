@@ -27,7 +27,7 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
-// Get all rides with filters
+// In rideRoutes.js, modify the GET / route:
 router.get('/', async (req, res) => {
     try {
         const { destination, date } = req.query;
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
             FROM rides r
             JOIN users u ON r.creator_id = u.id
             WHERE status = 'active'
-            AND departure_time > NOW() - INTERVAL '1 hour'
+            AND departure_time > NOW()
         `;
         const queryParams = [];
 
@@ -56,7 +56,9 @@ router.get('/', async (req, res) => {
 
         query += ' ORDER BY departure_time ASC';
 
+        console.log('Executing query:', query);
         const rides = await db.query(query, queryParams);
+        console.log('Found rides:', rides.rows);
         res.json(rides.rows);
     } catch (error) {
         console.error('Get rides error:', error);

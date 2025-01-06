@@ -7,21 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const RidesList = () => {
-    const navigate = useNavigate();
-    const { user } = useAuth();
-    const [destination, setDestination] = useState('');
-    const [date, setDate] = useState('');
-    const [requestingRide, setRequestingRide] = useState(null);
-    const [rideRequests, setRideRequests] = useState({});
-
     const { data: rides, isLoading, error } = useQuery({
         queryKey: ['rides', destination, date],
         queryFn: async () => {
+            console.log('Fetching rides...');
             const params = new URLSearchParams();
             if (destination) params.append('destination', destination);
             if (date) params.append('date', date);
             
-            const response = await axios.get(`http://localhost:3001/api/rides?${params}`);
+            const response = await axios.get(`/api/rides?${params}`);
+            console.log('Received rides:', response.data);
             return response.data;
         }
     });
