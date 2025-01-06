@@ -46,19 +46,27 @@ const Login = () => {
     const handleTestLogin = async () => {
         try {
             setLoading(true);
+            setError('');  // Clear any previous errors
             console.log('Starting test login request...');
-            const response = await axios.post('/api/auth/test-login');  // Updated path
-            console.log('Test login response:', response.data);
             
-            const { token } = response.data;
+            const response = await axios.post('/auth/test-login');
+            console.log('Test login response:', response);
+            
+            const { token, user: userData } = response.data;
             if (token) {
                 localStorage.setItem('token', token);
+                console.log('Token stored:', token);
+                console.log('User data:', userData);
                 await handleAuthCallback(token);
                 navigate('/rides');
+            } else {
+                console.error('No token in response:', response.data);
+                setError('Invalid response from server');
             }
         } catch (error) {
-            console.error('Test login error details:', error.response?.data || error.message);
-            setError('Login failed. Please try again.');
+            console.error('Test login error:', error);
+            console.error('Error details:', error.response?.data);
+            setError(error.response?.data?.message || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }

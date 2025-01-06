@@ -12,10 +12,19 @@ const instance = axios.create({
 // Add request interceptor for logging
 instance.interceptors.request.use(request => {
     console.log('Starting Request:', request.method, request.url);
+    if (request.url.startsWith('/api')) {
+        console.log('URL contains /api prefix');
+    } else {
+        request.url = `/api${request.url}`;
+        console.log('Added /api prefix to URL:', request.url);
+    }
+    
     if (localStorage.getItem('token')) {
         request.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
     }
     return request;
+}, error => {
+    return Promise.reject(error);
 });
 
 // Add response interceptor for logging
@@ -27,7 +36,8 @@ instance.interceptors.response.use(
     error => {
         console.error('Response Error:', {
             status: error.response?.status,
-            message: error.response?.data?.message || error.message
+            data: error.response?.data,
+            message: error.message
         });
         return Promise.reject(error);
     }

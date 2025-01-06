@@ -33,14 +33,11 @@ export const AuthProvider = ({ children }) => {
 
     const handleAuthCallback = async (token) => {
         try {
-            if (!token) {
-                throw new Error('No token provided');
-            }
-
-            const response = await axios.get('http://localhost:3001/api/auth/verify', {
+            console.log('Handling auth callback with token:', token);
+            const response = await axios.get('/auth/verify', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
+            console.log('Auth verification response:', response.data);
             setUser(response.data.user);
             return response.data.user;
         } catch (error) {
