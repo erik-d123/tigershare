@@ -19,21 +19,16 @@ const RidesList = () => {
         queryFn: async () => {
             console.log('Starting rides fetch...');
             try {
-                const params = new URLSearchParams();
-                if (destination) params.append('destination', destination);
-                if (date) params.append('date', date);
-                
-                const response = await axios.get(`rides`); // axios config will add /api prefix
+                const response = await axios.get('/rides');
                 console.log('Rides API response:', response.data);
                 return response.data;
             } catch (err) {
                 console.error('Error fetching rides:', err);
                 throw err;
             }
-}
+        }
     });
 
-    // Debugging logs
     console.log('Component state:', { rides, isLoading, error, user });
 
     // Fetch request status for each ride
@@ -70,7 +65,7 @@ const RidesList = () => {
         setRequestingRide(rideId);
         try {
             await axios.post(
-                `/api/rides/${rideId}/request`,
+                `/rides/${rideId}/request`,
                 {},
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -150,10 +145,18 @@ const RidesList = () => {
         );
     }
 
+    if (!rides || rides.length === 0) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500">No rides available</div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto">
             <div className="space-y-4">
-                {rides?.map((ride) => (
+                {rides.map((ride) => (
                     <div 
                         key={ride.id} 
                         className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -167,12 +170,12 @@ const RidesList = () => {
                                     {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
                                 </p>
                                 <p className="text-gray-600">
-                                    Posted by: {ride.creator_name} ({ride.creator_netid})
+                                    Posted by: {ride.creator_name || ride.creator_netid}
                                 </p>
                                 <div className="mt-2 space-y-1">
                                     <div className="flex items-center space-x-2">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            {parseInt(ride.current_participants) + 1}/{parseInt(ride.available_seats) + 1} seats filled
+                                            {parseInt(ride.current_participants || 0)}/{parseInt(ride.available_seats)} seats available
                                         </span>
                                         {ride.total_fare && (
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -194,11 +197,6 @@ const RidesList = () => {
                         </div>
                     </div>
                 ))}
-                {(!rides || rides.length === 0) && (
-                    <div className="text-center py-8 text-gray-500">
-                        No rides available matching your criteria
-                    </div>
-                )}
             </div>
         </div>
     );
