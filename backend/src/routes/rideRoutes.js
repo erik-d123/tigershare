@@ -27,10 +27,12 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
-// In rideRoutes.js, modify the GET / route:
+// Get all rides with filters
 router.get('/', async (req, res) => {
     try {
+        console.log('Received GET /rides request with query:', req.query);
         const { destination, date } = req.query;
+        
         let query = `
             SELECT r.*, 
                    u.netid as creator_netid,
@@ -56,9 +58,11 @@ router.get('/', async (req, res) => {
 
         query += ' ORDER BY departure_time ASC';
 
-        console.log('Executing query:', query);
+        console.log('Executing query:', { query, params: queryParams });
         const rides = await db.query(query, queryParams);
-        console.log('Found rides:', rides.rows);
+        console.log(`Found ${rides.rows.length} rides`);
+        console.log('Ride data:', rides.rows);
+        
         res.json(rides.rows);
     } catch (error) {
         console.error('Get rides error:', error);
@@ -90,6 +94,7 @@ router.get('/created-by/:userId', authenticateToken, async (req, res) => {
 // Get rides joined by user
 router.get('/joined-by/:userId', authenticateToken, async (req, res) => {
     try {
+        console.log('Fetching joined rides for user:', req.params.userId);
         const rides = await db.query(
             `SELECT r.*, 
                     u.netid as creator_netid,
@@ -102,6 +107,7 @@ router.get('/joined-by/:userId', authenticateToken, async (req, res) => {
              ORDER BY r.departure_time DESC`,
             [req.params.userId]
         );
+        console.log('Found joined rides:', rides.rows.length);
         res.json(rides.rows);
     } catch (error) {
         console.error('Get joined rides error:', error);
@@ -174,7 +180,7 @@ router.post('/:rideId/request', authenticateToken, async (req, res) => {
             [rideId, requesterId, 'pending']
         );
 
-        console.log('Attempting to send email to:', ride.host_email);
+        console.log('Sending email notification to:', ride.host_email);
 
         // Send email notification
         try {
@@ -219,140 +225,6 @@ router.post('/create', authenticateToken, async (req, res) => {
     }
 });
 
-// Approve join request
-router.get('/:rideId/approve/:requesterId', async (req, res) => {
-    try {
-        const { rideId, requesterId } = req.params;
-        console.log('Processing approval:', { rideId, requesterId });
-
-        // Get ride and user info
-        const rideInfo = await db.query(
-            `SELECT r.destination, 
-                    u.email as requester_email,
-                    h.full_name as host_name
-             FROM rides r
-             JOIN users u ON u.id = $1
-             JOIN users h ON h.id = r.creator_id
-             WHERE r.id = $2`,
-            [requesterId, rideId]
-        );
-
-        if (rideInfo.rows.length === 0) {
-            return res.status(404).send('Ride not found');
-        }
-
-        // Update request status
-        await db.query(
-            'UPDATE ride_requests SET status = $1 WHERE ride_id = $2 AND requester_id = $3',
-            ['approved', rideId, requesterId]
-        );
-
-        // Add to ride participants
-        await db.query(
-            'INSERT INTO ride_participants (ride_id, user_id) VALUES ($1, $2)',
-            [rideId, requesterId]
-        );
-
-        // Send approval email
-        try {
-            await sendRideApprovalEmail(
-                rideInfo.rows[0].requester_email,
-                rideInfo.rows[0].destination,
-                rideInfo.rows[0].host_name
-            );
-            console.log('Approval email sent');
-        } catch (emailError) {
-            console.error('Error sending approval email:', emailError);
-        }
-
-        res.send('Request approved successfully. You can close this window.');
-    } catch (error) {
-        console.error('Approval error:', error);
-        res.status(500).send('Error processing approval');
-    }
-});
-
-// Deny join request
-router.get('/:rideId/deny/:requesterId', async (req, res) => {
-    try {
-        const { rideId, requesterId } = req.params;
-        console.log('Processing denial:', { rideId, requesterId });
-
-        // Get user email and ride info
-        const requestInfo = await db.query(
-            `SELECT r.destination, u.email as requester_email
-             FROM rides r
-             JOIN users u ON u.id = $1
-             WHERE r.id = $2`,
-            [requesterId, rideId]
-        );
-
-        // Update request status
-        await db.query(
-            'UPDATE ride_requests SET status = $1 WHERE ride_id = $2 AND requester_id = $3',
-            ['denied', rideId, requesterId]
-        );
-
-        // Send denial email
-        try {
-            await sendRideDenialEmail(
-                requestInfo.rows[0].requester_email,
-                requestInfo.rows[0].destination
-            );
-            console.log('Denial email sent');
-        } catch (emailError) {
-            console.error('Error sending denial email:', emailError);
-        }
-
-        res.send('Request denied. You can close this window.');
-    } catch (error) {
-        console.error('Denial error:', error);
-        res.status(500).send('Error processing denial');
-    }
-});
-
-// Leave ride
-router.post('/:rideId/leave', authenticateToken, async (req, res) => {
-    try {
-        const { rideId } = req.params;
-        const user_id = req.user.id;
-
-        // Begin a transaction
-        await db.query('BEGIN');
-
-        try {
-            // Remove from ride_participants
-            const result = await db.query(
-                'DELETE FROM ride_participants WHERE ride_id = $1 AND user_id = $2',
-                [rideId, user_id]
-            );
-
-            if (result.rowCount === 0) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ message: 'You are not in this ride' });
-            }
-
-            // Delete any existing ride requests
-            await db.query(
-                'DELETE FROM ride_requests WHERE ride_id = $1 AND requester_id = $2',
-                [rideId, user_id]
-            );
-
-            // Commit the transaction
-            await db.query('COMMIT');
-
-            res.json({ message: 'Successfully left ride' });
-        } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
-        }
-    } catch (error) {
-        console.error('Leave ride error:', error);
-        res.status(500).json({ message: 'Error leaving ride' });
-    }
-});
-
-
 // Cancel a ride (only creator can cancel)
 router.post('/:rideId/cancel', authenticateToken, async (req, res) => {
     try {
@@ -375,28 +247,11 @@ router.post('/:rideId/cancel', authenticateToken, async (req, res) => {
             [rideId]
         );
 
-        // Get all participants' emails
-        const participants = await db.query(
-            `SELECT u.email, r.destination 
-             FROM ride_participants rp
-             JOIN users u ON rp.user_id = u.id
-             JOIN rides r ON rp.ride_id = r.id
-             WHERE rp.ride_id = $1`,
-            [rideId]
-        );
-
-        // Send cancellation emails to all participants
-        for (const participant of participants.rows) {
-            // Send cancellation email to each participant
-            // Implement email sending here
-        }
-
         res.json({ message: 'Ride cancelled successfully' });
     } catch (error) {
         console.error('Cancel ride error:', error);
         res.status(500).json({ message: 'Error cancelling ride' });
     }
 });
-
 
 module.exports = router;

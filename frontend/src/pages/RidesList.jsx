@@ -1,25 +1,40 @@
 // frontend/src/pages/RidesList.jsx
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import axios from '../config/axios';
 import moment from 'moment';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const RidesList = () => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [destination, setDestination] = useState('');
+    const [date, setDate] = useState('');
+    const [requestingRide, setRequestingRide] = useState(null);
+    const [rideRequests, setRideRequests] = useState({});
+
     const { data: rides, isLoading, error } = useQuery({
         queryKey: ['rides', destination, date],
         queryFn: async () => {
-            console.log('Fetching rides...');
-            const params = new URLSearchParams();
-            if (destination) params.append('destination', destination);
-            if (date) params.append('date', date);
-            
-            const response = await axios.get(`/api/rides?${params}`);
-            console.log('Received rides:', response.data);
-            return response.data;
+            console.log('Starting rides fetch...');
+            try {
+                const params = new URLSearchParams();
+                if (destination) params.append('destination', destination);
+                if (date) params.append('date', date);
+                
+                const response = await axios.get(`/api/rides?${params}`);
+                console.log('Rides API response:', response.data);
+                return response.data;
+            } catch (err) {
+                console.error('Error fetching rides:', err);
+                throw err;
+            }
         }
     });
+
+    // Debugging logs
+    console.log('Component state:', { rides, isLoading, error, user });
 
     // Fetch request status for each ride
     useEffect(() => {
@@ -30,7 +45,7 @@ const RidesList = () => {
             for (const ride of rides) {
                 try {
                     const response = await axios.get(
-                        `http://localhost:3001/api/rides/${ride.id}/request-status`,
+                        `/api/rides/${ride.id}/request-status`,
                         {
                             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                         }
@@ -55,7 +70,7 @@ const RidesList = () => {
         setRequestingRide(rideId);
         try {
             await axios.post(
-                `http://localhost:3001/api/rides/${rideId}/request`,
+                `/api/rides/${rideId}/request`,
                 {},
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -116,9 +131,27 @@ const RidesList = () => {
             </button>
         );
     };
+
+    if (isLoading) {
+        console.log('Loading rides...');
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-princeton-orange"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        console.error('Error in component:', error);
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-red-500">Error loading rides</div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto">
-            {/* revisit */}
             <div className="space-y-4">
                 {rides?.map((ride) => (
                     <div 
