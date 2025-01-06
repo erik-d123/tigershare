@@ -92,6 +92,11 @@ router.get('/cas/callback', async (req, res) => {
 // Test login endpoint
 router.post('/test-login', async (req, res) => {
     try {
+        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_TEST_LOGIN !== 'true') {
+            console.error('Test login attempted in production without permission');
+            return res.status(403).json({ message: 'Test login not allowed in production' });
+        }
+
         console.log('Attempting test login...');
         let user = await db.query('SELECT * FROM users WHERE netid = $1', ['test123']);
         
