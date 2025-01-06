@@ -1,6 +1,6 @@
 // frontend/src/contexts/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 
 const AuthContext = createContext(null);
 
@@ -13,9 +13,8 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const response = await axios.get('http://localhost:3001/api/auth/verify', {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
+                    const response = await axios.get('/auth/verify');
+                    console.log('Verify response:', response);
                     setUser(response.data.user);
                 } catch (error) {
                     console.error('Token verification error:', error);
@@ -33,11 +32,12 @@ export const AuthProvider = ({ children }) => {
 
     const handleAuthCallback = async (token) => {
         try {
-            console.log('Handling auth callback with token:', token);
-            const response = await axios.get('/auth/verify', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            console.log('Auth verification response:', response.data);
+            if (!token) {
+                throw new Error('No token provided');
+            }
+
+            const response = await axios.get('/auth/verify');
+            console.log('Auth callback response:', response);
             setUser(response.data.user);
             return response.data.user;
         } catch (error) {
@@ -75,3 +75,5 @@ export const useAuth = () => {
     }
     return context;
 };
+
+export default AuthContext;

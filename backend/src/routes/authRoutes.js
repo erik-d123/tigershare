@@ -124,7 +124,7 @@ router.post('/test-login', async (req, res) => {
     }
 });
 
-// Verify token endpoint
+// Update the verify endpoint
 router.get('/verify', async (req, res) => {
     try {
         console.log('Verifying token...');
@@ -140,17 +140,18 @@ router.get('/verify', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         console.log('Token decoded:', decoded);
         
-        const user = await db.query(
-            'SELECT id, netid, email, full_name FROM users WHERE id = $1',
+        const result = await db.query(
+            'SELECT id, netid, email, full_name, created_at FROM users WHERE id = $1',
             [decoded.id]
         );
-        console.log('User found:', user.rows[0]);
 
-        if (user.rows.length === 0) {
+        if (result.rows.length === 0) {
+            console.log('User not found');
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.json({ user: user.rows[0] });
+        console.log('User found:', result.rows[0]);
+        res.json({ user: result.rows[0] });
     } catch (error) {
         console.error('Token verification error:', error);
         res.status(401).json({ message: 'Invalid token' });

@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const instance = axios.create({
-    baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api',
+    baseURL: '/api',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
@@ -17,6 +17,9 @@ instance.interceptors.request.use(request => {
         request.headers.Authorization = `Bearer ${token}`;
     }
     return request;
+}, error => {
+    console.error('Request Error:', error);
+    return Promise.reject(error);
 });
 
 // Add response interceptor
