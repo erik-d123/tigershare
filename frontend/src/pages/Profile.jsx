@@ -16,20 +16,10 @@ const Profile = () => {
     const fetchUserRides = async () => {
         try {
             const [createdResponse, joinedResponse] = await Promise.all([
-                axios.get(
-                    `http://localhost:3001/api/rides/created-by/${user.id}`,
-                    {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    }
-                ),
-                axios.get(
-                    `http://localhost:3001/api/rides/joined-by/${user.id}`,
-                    {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    }
-                )
+                axios.get(`/rides/created-by/${user.id}`),
+                axios.get(`/rides/joined-by/${user.id}`)
             ]);
-
+            
             setMyCreatedRides(createdResponse.data);
             setMyJoinedRides(joinedResponse.data);
             setLoading(false);
