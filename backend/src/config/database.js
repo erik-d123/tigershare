@@ -1,14 +1,24 @@
-// backend/src/config/database.js
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
-});
+let pool;
+
+if (process.env.NODE_ENV === 'production') {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+} else {
+    pool = new Pool({
+        user: process.env.DB_USER,
+        host: process.env.DB_HOST,
+        database: process.env.DB_NAME,
+        password: process.env.DB_PASSWORD,
+        port: process.env.DB_PORT,
+    });
+}
 
 // Test the connection
 pool.connect((err) => {
@@ -16,6 +26,9 @@ pool.connect((err) => {
         console.error('Database connection error:', err.stack);
     } else {
         console.log('Successfully connected to database');
+        if (process.env.NODE_ENV === 'production') {
+            console.log('Using production database configuration');
+        }
     }
 });
 

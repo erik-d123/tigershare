@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const path = require('path'); // Import 'path' to handle static file paths
+const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -15,7 +15,9 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.NODE_ENV === 'production' 
+        ? process.env.FRONTEND_URL 
+        : 'http://localhost:5173',
     credentials: true
 }));
 app.use(express.json());
@@ -36,31 +38,31 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
+// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 
-// Serve frontend static files in production
-if (process.env.NODE_ENV === 'production') {
-    // Path to the frontend's built files
-    app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-
-    // Catch-all route to serve the frontend's index.html
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
-    });
-}
-
 // Health check route
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'healthy',
         timestamp: new Date(),
         environment: process.env.NODE_ENV
     });
 });
+
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+    // Serve static files
+    app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+    // Handle client routing - must be after API routes
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+    });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -82,17 +84,17 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
-    console.log(`Database: ${process.env.DB_NAME} on ${process.env.DB_HOST}`);
+    if (process.env.NODE_ENV === 'production') {
+        console.log(`App URL: ${process.env.FRONTEND_URL}`);
+    }
 });
 
-// Handle uncaught exceptions
+// Error handlers
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
     process.exit(1);
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err);
     process.exit(1);
