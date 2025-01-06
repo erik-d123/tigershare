@@ -47,7 +47,7 @@ const Login = () => {
         try {
             setLoading(true);
             console.log('Starting test login request...');
-            const response = await axios.post('/api/auth/test-login');
+            const response = await axios.post('/api/auth/test-login');  // Updated path
             console.log('Test login response:', response.data);
             
             const { token } = response.data;
