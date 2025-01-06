@@ -127,18 +127,24 @@ router.post('/test-login', async (req, res) => {
 // Verify token endpoint
 router.get('/verify', async (req, res) => {
     try {
+        console.log('Verifying token...');
         const authHeader = req.headers.authorization;
         if (!authHeader) {
+            console.log('No token provided');
             return res.status(401).json({ message: 'No token provided' });
         }
 
         const token = authHeader.split(' ')[1];
+        console.log('Token received:', token);
+        
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Token decoded:', decoded);
         
         const user = await db.query(
             'SELECT id, netid, email, full_name FROM users WHERE id = $1',
             [decoded.id]
         );
+        console.log('User found:', user.rows[0]);
 
         if (user.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });

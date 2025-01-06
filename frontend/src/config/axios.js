@@ -2,32 +2,24 @@
 import axios from 'axios';
 
 const instance = axios.create({
-    baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001',
+    baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
     }
 });
 
-// Add request interceptor for logging
+// Add request interceptor
 instance.interceptors.request.use(request => {
     console.log('Starting Request:', request.method, request.url);
-    if (request.url.startsWith('/api')) {
-        console.log('URL contains /api prefix');
-    } else {
-        request.url = `/api${request.url}`;
-        console.log('Added /api prefix to URL:', request.url);
-    }
-    
-    if (localStorage.getItem('token')) {
-        request.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
+    const token = localStorage.getItem('token');
+    if (token) {
+        request.headers.Authorization = `Bearer ${token}`;
     }
     return request;
-}, error => {
-    return Promise.reject(error);
 });
 
-// Add response interceptor for logging
+// Add response interceptor
 instance.interceptors.response.use(
     response => {
         console.log('Response:', response.status, response.data);
