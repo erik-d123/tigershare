@@ -32,9 +32,20 @@ app.use(session({
     }
 }));
 
-// Log all requests
+// Request logging middleware
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    const start = Date.now();
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`, {
+        query: req.query,
+        body: req.body,
+        headers: req.headers
+    });
+    
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`${new Date().toISOString()} - Completed ${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+    });
+    
     next();
 });
 
@@ -55,10 +66,9 @@ app.get('/api/health', (req, res) => {
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {
-    // Serve static files
     app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
-    // Handle client routing - must be after API routes
+    // Catch-all route to serve the frontend's index.html
     app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
     });
@@ -84,17 +94,16 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
-    if (process.env.NODE_ENV === 'production') {
-        console.log(`App URL: ${process.env.FRONTEND_URL}`);
-    }
+    console.log(`App URL: ${process.env.FRONTEND_URL}`);
 });
 
-// Error handlers
+// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
     process.exit(1);
 });
 
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err);
     process.exit(1);
