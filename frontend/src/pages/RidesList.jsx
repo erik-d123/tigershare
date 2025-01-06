@@ -35,15 +35,12 @@ const RidesList = () => {
     useEffect(() => {
         const fetchRequestStatuses = async () => {
             if (!user || !rides) return;
-
+        
             const statuses = {};
             for (const ride of rides) {
                 try {
                     const response = await axios.get(
-                        `/api/rides/${ride.id}/request-status`,
-                        {
-                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                        }
+                        `/rides/${ride.id}/request-status`
                     );
                     statuses[ride.id] = response.data.status;
                 } catch (error) {

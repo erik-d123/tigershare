@@ -19,11 +19,12 @@ const CreateRide = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            console.log('Submitting form data:', formData);
             const response = await axios.post('/rides/create', formData);
             console.log('Create ride response:', response.data);
             navigate('/rides');
         } catch (error) {
-            console.error('Create ride error:', error);
+            console.error('Create ride error:', error.response?.data || error.message);
             setError(error.response?.data?.message || 'Error creating ride');
         }
     };

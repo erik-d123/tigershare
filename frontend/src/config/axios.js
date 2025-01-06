@@ -1,4 +1,3 @@
-// frontend/src/config/axios.js
 import axios from 'axios';
 
 const instance = axios.create({
@@ -18,7 +17,6 @@ instance.interceptors.request.use(request => {
     }
     return request;
 }, error => {
-    console.error('Request Error:', error);
     return Promise.reject(error);
 });
 
@@ -26,7 +24,8 @@ instance.interceptors.request.use(request => {
 instance.interceptors.response.use(
     response => {
         console.log('Response:', response.status, response.data);
-        return response;
+        // Ensure data is returned even if empty
+        return response.data ? response : { ...response, data: [] };
     },
     error => {
         console.error('Response Error:', {
