@@ -15,15 +15,22 @@ const Profile = () => {
 
     const fetchUserRides = async () => {
         try {
-            console.log('Fetching user rides for:', user.id);
-            const [createdResponse, joinedResponse] = await Promise.all([
-                axios.get(`/rides/created-by/${user.id}`),
-                axios.get(`/rides/joined-by/${user.id}`)
-            ]);
+            if (!user || !user.id) return;
             
+            console.log('Fetching rides for user:', user.id);
+            const token = localStorage.getItem('token');
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+
+            const [createdResponse, joinedResponse] = await Promise.all([
+                axios.get(`/api/rides/created-by/${user.id}`, { headers }),
+                axios.get(`/api/rides/joined-by/${user.id}`, { headers })
+            ]);
+
             console.log('Created rides response:', createdResponse.data);
             console.log('Joined rides response:', joinedResponse.data);
-            
+
             setMyCreatedRides(createdResponse.data || []);
             setMyJoinedRides(joinedResponse.data || []);
             setLoading(false);

@@ -19,12 +19,17 @@ const CreateRide = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            console.log('Submitting form data:', formData);
-            const response = await axios.post('/rides/create', formData);
-            console.log('Create ride response:', response.data);
+            console.log('Submitting new ride:', formData);
+            const token = localStorage.getItem('token');
+            const response = await axios.post('/api/rides/create', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            console.log('Ride created:', response.data);
             navigate('/rides');
         } catch (error) {
-            console.error('Create ride error:', error.response?.data || error.message);
+            console.error('Create ride error:', error);
             setError(error.response?.data?.message || 'Error creating ride');
         }
     };
