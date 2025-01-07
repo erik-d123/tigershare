@@ -51,13 +51,14 @@ const Profile = () => {
         if (!window.confirm('Are you sure you want to cancel this ride?')) {
             return;
         }
-
+    
         try {
+            const token = localStorage.getItem('token');
             await axios.post(
-                `http://localhost:3001/api/rides/${rideId}/cancel`,
+                `/api/rides/${rideId}/cancel`,
                 {},
                 {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
             
@@ -74,13 +75,14 @@ const Profile = () => {
         if (!window.confirm('Are you sure you want to leave this ride?')) {
             return;
         }
-
+    
         try {
+            const token = localStorage.getItem('token');
             await axios.post(
-                `http://localhost:3001/api/rides/${rideId}/leave`,
+                `/api/rides/${rideId}/leave`,
                 {},
                 {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
             

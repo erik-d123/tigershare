@@ -14,12 +14,24 @@ const userRoutes = require('./routes/userRoutes');
 // Create Express app
 const app = express();
 
+app.use((req, res, next) => {
+   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+       headers: req.headers,
+       query: req.query,
+       body: req.body,
+       env: process.env.NODE_ENV
+   });
+   next();
+});
+
 // Middleware
 app.use(cors({
    origin: process.env.NODE_ENV === 'production' 
        ? process.env.FRONTEND_URL 
        : 'http://localhost:5173',
-   credentials: true
+   credentials: true,
+   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
