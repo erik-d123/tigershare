@@ -27,6 +27,48 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
+// Leave ride
+router.post('/:rideId/leave', authenticateToken, async (req, res) => {
+    try {
+        const { rideId } = req.params;
+        const user_id = req.user.id;
+
+        // Begin a transaction
+        await db.query('BEGIN');
+
+        try {
+            // Remove from ride_participants
+            const result = await db.query(
+                'DELETE FROM ride_participants WHERE ride_id = $1 AND user_id = $2',
+                [rideId, user_id]
+            );
+
+            if (result.rowCount === 0) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ message: 'You are not in this ride' });
+            }
+
+            // Delete any existing ride requests
+            await db.query(
+                'DELETE FROM ride_requests WHERE ride_id = $1 AND requester_id = $2',
+                [rideId, user_id]
+            );
+
+            // Commit the transaction
+            await db.query('COMMIT');
+
+            console.log(`User ${user_id} successfully left ride ${rideId}`);
+            res.json({ message: 'Successfully left ride' });
+        } catch (error) {
+            await db.query('ROLLBACK');
+            throw error;
+        }
+    } catch (error) {
+        console.error('Leave ride error:', error);
+        res.status(500).json({ message: 'Error leaving ride' });
+    }
+});
+
 // Get all rides with filters
 router.get('/', async (req, res) => {
     try {
