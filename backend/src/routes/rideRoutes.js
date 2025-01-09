@@ -3,11 +3,12 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+
 const { 
     sendRideRequestEmail, 
-    sendRideApprovalEmail, 
-    sendRideDenialEmail 
-} = require('../utils/emailService');
+    sendRideConfirmationEmail, 
+    sendRideDeniedEmail 
+} = require('../services/emailService');
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {

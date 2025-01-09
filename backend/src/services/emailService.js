@@ -1,4 +1,4 @@
-// backend/src/utils/emailService.js
+// backend/src/services/emailService.js
 const nodemailer = require('nodemailer');
 
 // Create reusable transporter
@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Verify transporter on startup
+// Verify transporter connection
 transporter.verify(function (error, success) {
     if (error) {
         console.error('Email transporter error:', error);
@@ -21,15 +21,15 @@ transporter.verify(function (error, success) {
 
 const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideId, requesterId) => {
     try {
-        console.log('Attempting to send ride request email:', {
-            to: hostEmail,
-            requester: requesterName,
-            destination
-        });
-
         const baseUrl = process.env.NODE_ENV === 'production'
             ? process.env.FRONTEND_URL
             : process.env.BACKEND_URL;
+
+        console.log('Sending ride request email:', {
+            to: hostEmail,
+            from: process.env.EMAIL_USER,
+            baseUrl
+        });
 
         const info = await transporter.sendMail({
             from: `"TigerShare" <${process.env.EMAIL_USER}>`,
@@ -57,9 +57,6 @@ const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideI
 
 const sendRideConfirmationEmail = async (hostEmail, requesterEmail, destination) => {
     try {
-        console.log('Sending confirmation emails for ride to:', destination);
-
-        // Email to requester
         await transporter.sendMail({
             from: `"TigerShare" <${process.env.EMAIL_USER}>`,
             to: requesterEmail,
@@ -71,7 +68,6 @@ const sendRideConfirmationEmail = async (hostEmail, requesterEmail, destination)
             `
         });
 
-        // Email to host
         await transporter.sendMail({
             from: `"TigerShare" <${process.env.EMAIL_USER}>`,
             to: hostEmail,
@@ -92,8 +88,6 @@ const sendRideConfirmationEmail = async (hostEmail, requesterEmail, destination)
 
 const sendRideDeniedEmail = async (requesterEmail, destination) => {
     try {
-        console.log('Sending denial email for ride to:', destination);
-
         const info = await transporter.sendMail({
             from: `"TigerShare" <${process.env.EMAIL_USER}>`,
             to: requesterEmail,
