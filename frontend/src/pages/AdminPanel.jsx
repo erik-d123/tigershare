@@ -10,8 +10,8 @@ const AdminPanel = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    // List of admin NetIDs (you can modify this list)
-    const adminNetIds = ['admin1', 'admin2']; // Add your admin NetIDs here
+    // List of admin NetIDs
+    const adminNetIds = ['ed1783'];
 
     const handleResetRides = async () => {
         if (!window.confirm('Are you sure you want to reset all rides? This action cannot be undone.')) {
