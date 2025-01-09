@@ -12,6 +12,9 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Check if alternative login is enabled
+    const showAlternativeLogin = import.meta.env.VITE_ENABLE_ALTERNATIVE_LOGIN === 'true';
+
     // Handle CAS callback
     useEffect(() => {
         const processAuthCallback = async () => {
@@ -127,63 +130,66 @@ const Login = () => {
                     </p>
                 </div>
 
-                {/* Divider */}
-                <div className="relative my-8">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Or</span>
-                    </div>
-                </div>
+                {/* Alternative Login Section */}
+                {showAlternativeLogin && (
+                    <>
+                        <div className="relative my-8">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">Or</span>
+                            </div>
+                        </div>
 
-                {/* Simple Email Login Form */}
-                <form onSubmit={handleSimpleLogin} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Email Address
-                        </label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            placeholder="Enter your email"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md 
-                                     focus:ring-princeton-orange focus:border-princeton-orange"
-                            required
-                        />
-                    </div>
+                        <form onSubmit={handleSimpleLogin} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter your email"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md 
+                                             focus:ring-princeton-orange focus:border-princeton-orange"
+                                    required
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Full Name
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            placeholder="Enter your full name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md 
-                                     focus:ring-princeton-orange focus:border-princeton-orange"
-                            required
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Full Name
+                                </label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter your full name"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md 
+                                             focus:ring-princeton-orange focus:border-princeton-orange"
+                                    required
+                                />
+                            </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading || !formData.email.trim() || !formData.name.trim()}
-                        className="w-full bg-gray-800 text-white py-3 rounded-md font-medium 
-                            hover:bg-gray-700 transition-colors disabled:opacity-50"
-                    >
-                        {loading ? 'Signing in...' : 'Sign in with Email'}
-                    </button>
+                            <button
+                                type="submit"
+                                disabled={loading || !formData.email.trim() || !formData.name.trim()}
+                                className="w-full bg-gray-800 text-white py-3 rounded-md font-medium 
+                                    hover:bg-gray-700 transition-colors disabled:opacity-50"
+                            >
+                                {loading ? 'Signing in...' : 'Sign in with Email'}
+                            </button>
 
-                    <p className="text-sm text-center text-gray-500">
-                        Alternative sign-in option for testing
-                    </p>
-                </form>
+                            <p className="text-sm text-center text-gray-500">
+                                Alternative sign-in option for testing
+                            </p>
+                        </form>
+                    </>
+                )}
             </div>
         </div>
     );

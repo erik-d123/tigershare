@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import RidesList from './pages/RidesList';
 import CreateRide from './pages/CreateRide';
+import AdminPanel from './pages/AdminPanel';
 import NamePromptModal from './components/NamePromptModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -19,7 +20,11 @@ const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
     
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-princeton-orange"></div>
+            </div>
+        );
     }
     
     if (!user) {
@@ -38,7 +43,7 @@ function AppContent() {
             if (user) {
                 try {
                     const response = await axios.get(
-                        'http://localhost:3001/api/users/needs-name',
+                        `${import.meta.env.VITE_API_URL}/api/users/needs-name`,
                         {
                             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                         }
@@ -77,6 +82,14 @@ function AppContent() {
                         element={
                             <ProtectedRoute>
                                 <Profile />
+                            </ProtectedRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/admin" 
+                        element={
+                            <ProtectedRoute>
+                                <AdminPanel />
                             </ProtectedRoute>
                         } 
                     />

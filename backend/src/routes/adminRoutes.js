@@ -3,27 +3,62 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
-// Reset rides and participants
-router.post('/reset-rides', async (req, res) => {
+// Reset all rides
+router.post('/reset-all-rides', async (req, res) => {
     try {
-        // Delete all ride participants
-        await db.query('DELETE FROM ride_participants');
-        
-        // Delete all rides
-        await db.query('DELETE FROM rides');
+        // Start a transaction
+        await db.query('BEGIN');
 
-        // Add sample rides back
-        await db.query(`
-            INSERT INTO rides (creator_id, destination, departure_time, available_seats, notes) 
-            VALUES 
-                (1, 'JFK Airport', '2024-12-30 10:00:00', 3, 'Terminal 4 departure'),
-                (2, 'Newark Airport', '2024-12-31 14:00:00', 2, 'Direct to Terminal B')
-        `);
+        try {
+            // Delete all ride participants
+            await db.query('DELETE FROM ride_participants');
+            
+            // Delete all ride requests
+            await db.query('DELETE FROM ride_requests');
+            
+            // Delete all rides
+            await db.query('DELETE FROM rides');
 
-        res.json({ message: 'Rides reset successfully' });
+            // Commit the transaction
+            await db.query('COMMIT');
+
+            console.log('Successfully reset all rides and related data');
+            res.json({ 
+                message: 'Successfully reset all rides',
+                details: {
+                    timestamp: new Date(),
+                    status: 'success'
+                }
+            });
+        } catch (error) {
+            // If there's an error, roll back the transaction
+            await db.query('ROLLBACK');
+            throw error;
+        }
     } catch (error) {
         console.error('Reset rides error:', error);
-        res.status(500).json({ message: 'Error resetting rides' });
+        res.status(500).json({ 
+            message: 'Error resetting rides',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+});
+
+// Get rides statistics
+router.get('/rides-stats', async (req, res) => {
+    try {
+        const stats = await db.query(`
+            SELECT 
+                COUNT(*) as total_rides,
+                COUNT(DISTINCT creator_id) as unique_creators,
+                (SELECT COUNT(*) FROM ride_participants) as total_participants
+            FROM rides
+        `);
+
+        res.json(stats.rows[0]);
+    } catch (error) {
+        console.error('Get stats error:', error);
+        res.status(500).json({ message: 'Error fetching statistics' });
     }
 });
 

@@ -6,7 +6,8 @@
     "heroku-postbuild": "cd frontend && npm install && npm run build && cd ../backend && npm install",
     "start": "cd backend && node src/server.js",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\""
+    "dev": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
+    "reset-rides": "curl -X POST http://localhost:3001/api/admin/reset-all-rides"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
