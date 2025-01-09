@@ -40,9 +40,9 @@ const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideI
                 <p>${requesterName} wants to join your ride to ${destination}.</p>
                 <p>To approve or deny this request, click one of these links:</p>
                 <p>
-                    <a href="${baseUrl}/api/rides/${rideId}/approve/${requesterId}?noauth=true">Approve Request</a>
+                    <a href="${baseUrl}/api/rides/${rideId}/approve/${requesterId}">Approve Request</a>
                     <br/><br/>
-                    <a href="${baseUrl}/api/rides/${rideId}/deny/${requesterId}?noauth=true">Deny Request</a>
+                    <a href="${baseUrl}/api/rides/${rideId}/deny/${requesterId}">Deny Request</a>
                 </p>
             `
         });

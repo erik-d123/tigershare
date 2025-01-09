@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
-
 const { 
     sendRideRequestEmail, 
     sendRideConfirmationEmail, 
@@ -104,12 +103,123 @@ router.get('/', async (req, res) => {
         console.log('Executing query:', { query, params: queryParams });
         const rides = await db.query(query, queryParams);
         console.log(`Found ${rides.rows.length} rides`);
-        console.log('Ride data:', rides.rows);
-        
         res.json(rides.rows);
     } catch (error) {
         console.error('Get rides error:', error);
         res.status(500).json({ message: 'Error fetching rides' });
+    }
+});
+
+// Handle ride approval
+router.get('/:rideId/approve/:requesterId', async (req, res) => {
+    try {
+        const { rideId, requesterId } = req.params;
+        
+        // Start a transaction
+        await db.query('BEGIN');
+
+        try {
+            // Get ride and request information
+            const rideInfo = await db.query(
+                `SELECT r.*, rq.requester_id, u.email as requester_email, 
+                        u.full_name as requester_name, 
+                        h.email as host_email
+                 FROM rides r
+                 JOIN ride_requests rq ON r.id = rq.ride_id
+                 JOIN users u ON rq.requester_id = u.id
+                 JOIN users h ON r.creator_id = h.id
+                 WHERE r.id = $1 AND rq.requester_id = $2 AND rq.status = 'pending'`,
+                [rideId, requesterId]
+            );
+
+            if (rideInfo.rows.length === 0) {
+                await db.query('ROLLBACK');
+                return res.status(404).send('Request not found or already processed');
+            }
+
+            const ride = rideInfo.rows[0];
+
+            // Check if ride is full
+            const participantCount = await db.query(
+                'SELECT COUNT(*) FROM ride_participants WHERE ride_id = $1',
+                [rideId]
+            );
+
+            if (participantCount.rows[0].count >= ride.available_seats) {
+                await db.query('ROLLBACK');
+                return res.status(400).send('Ride is full');
+            }
+
+            // Update request status
+            await db.query(
+                `UPDATE ride_requests 
+                 SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
+                 WHERE ride_id = $1 AND requester_id = $2`,
+                [rideId, requesterId]
+            );
+
+            // Add to ride participants
+            await db.query(
+                'INSERT INTO ride_participants (ride_id, user_id) VALUES ($1, $2)',
+                [rideId, requesterId]
+            );
+
+            // Send confirmation emails
+            await sendRideConfirmationEmail(
+                ride.host_email,
+                ride.requester_email,
+                ride.destination
+            );
+
+            await db.query('COMMIT');
+            res.send('Request approved successfully');
+        } catch (error) {
+            await db.query('ROLLBACK');
+            throw error;
+        }
+    } catch (error) {
+        console.error('Approve ride error:', error);
+        res.status(500).send('Error processing request');
+    }
+});
+
+// Handle ride denial
+router.get('/:rideId/deny/:requesterId', async (req, res) => {
+    try {
+        const { rideId, requesterId } = req.params;
+
+        // Get ride and request information
+        const rideInfo = await db.query(
+            `SELECT r.*, u.email as requester_email
+             FROM rides r
+             JOIN ride_requests rq ON r.id = rq.ride_id
+             JOIN users u ON rq.requester_id = u.id
+             WHERE r.id = $1 AND rq.requester_id = $2 AND rq.status = 'pending'`,
+            [rideId, requesterId]
+        );
+
+        if (rideInfo.rows.length === 0) {
+            return res.status(404).send('Request not found or already processed');
+        }
+
+        // Update request status
+        await db.query(
+            `UPDATE ride_requests 
+             SET status = 'denied', updated_at = CURRENT_TIMESTAMP 
+             WHERE ride_id = $1 AND requester_id = $2`,
+            [rideId, requesterId]
+        );
+
+        // Send denial email
+        await sendRideDeniedEmail(
+            rideInfo.rows[0].requester_email,
+            rideInfo.rows[0].destination
+        );
+
+        res.send('Request denied successfully');
+    } catch (error) {
+        console.error('Deny ride error:', error);
+        res.status(500).send('Error processing request');
     }
 });
 
@@ -253,15 +363,33 @@ router.post('/create', authenticateToken, async (req, res) => {
         const { destination, departure_time, available_seats, total_fare, notes } = req.body;
         const creator_id = req.user.id;
 
-        const result = await db.query(
-            `INSERT INTO rides (creator_id, destination, departure_time, available_seats, total_fare, notes, status)
-             VALUES ($1, $2, $3, $4, $5, $6, 'active')
-             RETURNING *`,
-            [creator_id, destination, departure_time, available_seats, total_fare, notes]
-        );
+        // Start a transaction
+        await db.query('BEGIN');
 
-        console.log('Ride created:', result.rows[0]);
-        res.status(201).json(result.rows[0]);
+        try {
+            // Create the ride
+            const result = await db.query(
+                `INSERT INTO rides (creator_id, destination, departure_time, available_seats, total_fare, notes, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'active')
+                 RETURNING *`,
+                [creator_id, destination, departure_time, available_seats, total_fare, notes]
+            );
+
+            // Add creator as a participant
+            await db.query(
+                'INSERT INTO ride_participants (ride_id, user_id) VALUES ($1, $2)',
+                [result.rows[0].id, creator_id]
+            );
+
+            // Commit transaction
+            await db.query('COMMIT');
+
+            console.log('Ride created:', result.rows[0]);
+            res.status(201).json(result.rows[0]);
+        } catch (error) {
+            await db.query('ROLLBACK');
+            throw error;
+        }
     } catch (error) {
         console.error('Create ride error:', error);
         res.status(500).json({ message: 'Error creating ride' });
