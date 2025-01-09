@@ -6,29 +6,42 @@ const axios = require('axios');
 const xml2js = require('xml2js');
 const db = require('../config/database');
 
-// Simple login for testing
+// Simple email login
 router.post('/simple-login', async (req, res) => {
     try {
-        const { netid } = req.body;
+        const { email, name } = req.body;
         
-        if (!netid || !netid.trim()) {
-            return res.status(400).json({ message: 'NetID is required' });
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Email is required' });
         }
 
-        const email = `${netid}@princeton.edu`;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: 'Name is required' });
+        }
+
+        // Generate a guest netid from email for database consistency
+        const netid = `guest_${email.split('@')[0]}`;
 
         // Find or create user
         let user = await db.query(
-            'SELECT * FROM users WHERE netid = $1',
-            [netid]
+            'SELECT * FROM users WHERE email = $1',
+            [email]
         );
 
         if (user.rows.length === 0) {
             // Create new user
             user = await db.query(
                 'INSERT INTO users (netid, email, full_name) VALUES ($1, $2, $3) RETURNING *',
-                [netid, email, netid]
+                [netid, email, name]
             );
+        } else {
+            // Update existing user's name if it has changed
+            if (user.rows[0].full_name !== name) {
+                user = await db.query(
+                    'UPDATE users SET full_name = $1 WHERE email = $2 RETURNING *',
+                    [name, email]
+                );
+            }
         }
 
         // Generate JWT token
