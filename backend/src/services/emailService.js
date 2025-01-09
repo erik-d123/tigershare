@@ -1,23 +1,12 @@
-// backend/src/services/emailService.js
-const nodemailer = require('nodemailer');
-
-// Create transporter for Princeton SMTP
-const transporter = nodemailer.createTransport({
-    host: 'smtp.princeton.edu',
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER, // Your Princeton NetID
-        pass: process.env.EMAIL_PASSWORD // Your Princeton password
-    }
-});
-
+// backend/src/utils/emailService.js
 const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideId, requesterId) => {
     try {
-        const baseUrl = process.env.NODE_ENV === 'production' 
-            ? process.env.FRONTEND_URL 
+        // Use environment-based URL
+        const baseUrl = process.env.NODE_ENV === 'production'
+            ? process.env.FRONTEND_URL
             : 'http://localhost:3001';
 
+        console.log('Sending ride request email to:', hostEmail);
         const info = await transporter.sendMail({
             from: '"TigerShare" <tigershare.noreply@gmail.com>',
             to: hostEmail,
@@ -27,9 +16,9 @@ const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideI
                 <p>${requesterName} wants to join your ride to ${destination}.</p>
                 <p>To approve or deny this request, click one of these links:</p>
                 <p>
-                    <a href="${baseUrl}/api/rides/${rideId}/approve/${requesterId}">Approve Request</a>
+                    <a href="${baseUrl}/api/rides/${rideId}/approve/${requesterId}?noauth=true">Approve Request</a>
                     <br/><br/>
-                    <a href="${baseUrl}/api/rides/${rideId}/deny/${requesterId}">Deny Request</a>
+                    <a href="${baseUrl}/api/rides/${rideId}/deny/${requesterId}?noauth=true">Deny Request</a>
                 </p>
             `
         });
@@ -39,8 +28,4 @@ const sendRideRequestEmail = async (hostEmail, requesterName, destination, rideI
         console.error('Failed to send email:', error);
         throw error;
     }
-};
-
-module.exports = {
-    sendRideJoinNotification
 };
