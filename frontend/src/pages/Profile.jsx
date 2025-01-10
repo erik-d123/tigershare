@@ -10,41 +10,41 @@ const Profile = () => {
     const navigate = useNavigate();
     const [myCreatedRides, setMyCreatedRides] = useState([]);
     const [myJoinedRides, setMyJoinedRides] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [selectedRideParticipants, setSelectedRideParticipants] = useState(null);
+    const [viewingParticipants, setViewingParticipants] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchUserRides = async () => {
-        try {
-            if (!user || !user.id) return;
-            
-            console.log('Fetching rides for user:', user.id);
-            const token = localStorage.getItem('token');
-            const headers = {
-                'Authorization': `Bearer ${token}`
-            };
-
-            const [createdResponse, joinedResponse] = await Promise.all([
-                axios.get(`/api/rides/created-by/${user.id}`, { headers }),
-                axios.get(`/api/rides/joined-by/${user.id}`, { headers })
-            ]);
-
-            console.log('Created rides response:', createdResponse.data);
-            console.log('Joined rides response:', joinedResponse.data);
-
-            setMyCreatedRides(createdResponse.data || []);
-            setMyJoinedRides(joinedResponse.data || []);
-            setLoading(false);
-        } catch (err) {
-            console.error('Error fetching rides:', err);
-            setError('Error fetching rides');
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (user) {
-            fetchUserRides();
-        }
+        const fetchData = async () => {
+            try {
+                if (!user || !user.id) return;
+                
+                const token = localStorage.getItem('token');
+                const headers = {
+                    'Authorization': `Bearer ${token}`
+                };
+
+                // Fetch all data in parallel
+                const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
+                    axios.get(`/api/rides/created-by/${user.id}`, { headers }),
+                    axios.get(`/api/rides/joined-by/${user.id}`, { headers }),
+                    axios.get('/api/rides/pending-requests', { headers })
+                ]);
+
+                setMyCreatedRides(createdResponse.data || []);
+                setMyJoinedRides(joinedResponse.data || []);
+                setPendingRequests(pendingResponse.data || []);
+                setLoading(false);
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                setError('Error fetching data');
+                setLoading(false);
+            }
+        };
+
+        fetchData();
     }, [user]);
 
     const handleCancelRide = async (rideId) => {
@@ -63,7 +63,10 @@ const Profile = () => {
             );
             
             // Refresh the rides data
-            await fetchUserRides();
+            const response = await axios.get(`/api/rides/created-by/${user.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMyCreatedRides(response.data);
             alert('Ride cancelled successfully');
         } catch (error) {
             console.error('Cancel ride error:', error);
@@ -86,12 +89,29 @@ const Profile = () => {
                 }
             );
             
-            // Refresh the rides data
-            await fetchUserRides();
+            // Refresh joined rides
+            const response = await axios.get(`/api/rides/joined-by/${user.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMyJoinedRides(response.data);
             alert('Successfully left the ride');
         } catch (error) {
             console.error('Leave ride error:', error);
             alert(error.response?.data?.message || 'Error leaving ride');
+        }
+    };
+
+    const handleViewParticipants = async (rideId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`/api/rides/${rideId}/participants`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSelectedRideParticipants(response.data);
+            setViewingParticipants(true);
+        } catch (error) {
+            console.error('Error fetching participants:', error);
+            alert('Error fetching participants');
         }
     };
 
@@ -126,6 +146,29 @@ const Profile = () => {
                     </div>
                 </div>
 
+                {/* Pending Requests Section */}
+                {pendingRequests.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Pending Requests</h2>
+                        <div className="space-y-4">
+                            {pendingRequests.map(request => (
+                                <div key={request.id} className="border rounded-lg p-4">
+                                    <p className="font-medium">{request.requester_name} ({request.requester_netid})</p>
+                                    <p className="text-gray-600">
+                                        Requesting to join ride to {request.destination}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        Departure: {moment(request.departure_time).format('MMMM D, YYYY h:mm A')}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        Requested {moment(request.created_at).fromNow()}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Rides I'm Hosting */}
                 <div className="mb-8">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Rides I'm Hosting</h2>
@@ -154,6 +197,12 @@ const Profile = () => {
                                                     {ride.status}
                                                 </span>
                                             </p>
+                                            <button
+                                                onClick={() => handleViewParticipants(ride.id)}
+                                                className="text-princeton-orange hover:text-princeton-orange/90 text-sm mt-2"
+                                            >
+                                                View Participants
+                                            </button>
                                         </div>
                                         {ride.status === 'active' && (
                                             <button
@@ -186,13 +235,19 @@ const Profile = () => {
                                                 {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
                                             </p>
                                             <p className="text-sm text-gray-600">
-                                                Posted by: {ride.creator_name}
+                                                Posted by: {ride.creator_name || ride.creator_netid}
                                             </p>
                                             {ride.total_fare && (
                                                 <p className="text-sm text-gray-600">
                                                     Total fare: ${ride.total_fare}
                                                 </p>
                                             )}
+                                            <button
+                                                onClick={() => handleViewParticipants(ride.id)}
+                                                className="text-princeton-orange hover:text-princeton-orange/90 text-sm mt-2"
+                                            >
+                                                View Participants
+                                            </button>
                                         </div>
                                         <button
                                             onClick={() => handleLeaveRide(ride.id)}
@@ -207,6 +262,32 @@ const Profile = () => {
                     )}
                 </div>
             </div>
+
+            {/* Participants Modal */}
+            {viewingParticipants && selectedRideParticipants && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">Ride Participants</h3>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {selectedRideParticipants.map(participant => (
+                                <div key={participant.netid} className="p-2 bg-gray-50 rounded">
+                                    <p className="font-medium">{participant.full_name}</p>
+                                    <p className="text-sm text-gray-600">{participant.netid}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => {
+                                setViewingParticipants(false);
+                                setSelectedRideParticipants(null);
+                            }}
+                            className="mt-4 w-full bg-gray-200 text-gray-800 py-2 rounded-md hover:bg-gray-300"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
