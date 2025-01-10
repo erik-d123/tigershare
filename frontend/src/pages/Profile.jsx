@@ -22,51 +22,45 @@ const Profile = () => {
             navigate('/login');
             return;
         }
-
         const fetchData = async () => {
             try {
+                if (!user || !user.id) {
+                    setLoading(false);
+                    return;
+                }
+
                 const token = localStorage.getItem('token');
                 if (!token) {
                     navigate('/login');
                     return;
                 }
 
+                setMyCreatedRides([]); // Initialize with empty arrays
+                setMyJoinedRides([]);
+                setPendingRequests([]);
+
                 const headers = {
                     'Authorization': `Bearer ${token}`
                 };
 
-                // Initialize with empty arrays in case of error
-                let createdRides = [];
-                let joinedRides = [];
-                let pendingReqs = [];
-
                 try {
-                    const createdResponse = await axios.get(`/api/rides/created-by/${user.id}`, { headers });
-                    createdRides = createdResponse.data || [];
+                    const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
+                        axios.get(`/rides/created-by/${user.id}`),
+                        axios.get(`/rides/joined-by/${user.id}`),
+                        axios.get('/rides/pending-requests')
+                    ]);
+
+                    setMyCreatedRides(createdResponse.data || []);
+                    setMyJoinedRides(joinedResponse.data || []);
+                    setPendingRequests(pendingResponse.data || []);
                 } catch (error) {
-                    console.error('Error fetching created rides:', error);
+                    console.error('Error fetching ride data:', error);
+                    // Don't set error state, just keep the empty arrays
                 }
 
-                try {
-                    const joinedResponse = await axios.get(`/api/rides/joined-by/${user.id}`, { headers });
-                    joinedRides = joinedResponse.data || [];
-                } catch (error) {
-                    console.error('Error fetching joined rides:', error);
-                }
-
-                try {
-                    const pendingResponse = await axios.get('/api/rides/pending-requests', { headers });
-                    pendingReqs = pendingResponse.data || [];
-                } catch (error) {
-                    console.error('Error fetching pending requests:', error);
-                }
-
-                setMyCreatedRides(createdRides);
-                setMyJoinedRides(joinedRides);
-                setPendingRequests(pendingReqs);
                 setLoading(false);
             } catch (err) {
-                console.error('Error fetching data:', err);
+                console.error('Error in fetchData:', err);
                 setError('Error loading profile data');
                 setLoading(false);
             }

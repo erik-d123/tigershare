@@ -3,14 +3,8 @@ import axios from 'axios';
 
 const isDevelopment = import.meta.env.VITE_NODE_ENV === 'development';
 const baseURL = isDevelopment 
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : '/api';
-
-console.log('Axios Configuration:', {
-    baseURL,
-    environment: import.meta.env.VITE_NODE_ENV,
-    apiUrl: import.meta.env.VITE_API_URL
-});
+    ? 'http://localhost:3001/api'
+    : `${import.meta.env.VITE_API_URL}/api`;
 
 const instance = axios.create({
     baseURL,
