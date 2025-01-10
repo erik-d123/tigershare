@@ -6,7 +6,7 @@ const axios = require('axios');
 const xml2js = require('xml2js');
 const db = require('../config/database');
 
-// Simple email login
+// Simple login for testing
 router.post('/simple-login', async (req, res) => {
     try {
         const { email, name } = req.body;
@@ -19,7 +19,7 @@ router.post('/simple-login', async (req, res) => {
             return res.status(400).json({ message: 'Name is required' });
         }
 
-        // Generate a guest netid from email for database consistency
+        // Generate a netid for the guest user
         const netid = `guest_${email.split('@')[0]}`;
 
         // Find or create user
@@ -34,14 +34,13 @@ router.post('/simple-login', async (req, res) => {
                 'INSERT INTO users (netid, email, full_name) VALUES ($1, $2, $3) RETURNING *',
                 [netid, email, name]
             );
+            console.log('Created new user:', user.rows[0]);
         } else {
-            // Update existing user's name if it has changed
-            if (user.rows[0].full_name !== name) {
-                user = await db.query(
-                    'UPDATE users SET full_name = $1 WHERE email = $2 RETURNING *',
-                    [name, email]
-                );
-            }
+            // Update existing user's name
+            user = await db.query(
+                'UPDATE users SET full_name = $1 WHERE email = $2 RETURNING *',
+                [name, email]
+            );
         }
 
         // Generate JWT token

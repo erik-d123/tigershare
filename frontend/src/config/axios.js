@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const isDevelopment = import.meta.env.VITE_NODE_ENV === 'development';
 const baseURL = isDevelopment 
-    ? 'http://localhost:3001'  // Remove /api from here
+    ? 'http://localhost:3001'
     : import.meta.env.VITE_API_URL;
 
 const instance = axios.create({
@@ -21,8 +21,8 @@ instance.interceptors.request.use(request => {
         request.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Add /api prefix to URL if it doesn't start with /auth
-    if (!request.url.startsWith('/auth')) {
+    // Add /api prefix
+    if (!request.url.startsWith('/api')) {
         request.url = `/api${request.url}`;
     }
 
@@ -35,6 +35,8 @@ instance.interceptors.request.use(request => {
     });
 
     return request;
+}, error => {
+    return Promise.reject(error);
 });
 
 // Add response interceptor
