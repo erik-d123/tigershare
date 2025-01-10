@@ -14,7 +14,7 @@ const RidesList = () => {
     const [requestingRide, setRequestingRide] = useState(null);
     const [rideRequests, setRideRequests] = useState({});
 
-    const { data: rides, isLoading, error } = useQuery({
+    const { data: rides, isLoading, error, refetch } = useQuery({
         queryKey: ['rides', destination, date],
         queryFn: async () => {
             console.log('Starting rides fetch...');
@@ -31,8 +31,7 @@ const RidesList = () => {
                 throw err;
             }
         },
-        // Refetch every minute to check for new rides or updates
-        refetchInterval: 60000
+        refetchInterval: 60000 // Refetch every minute
     });
 
     // Fetch request status for each ride
@@ -84,6 +83,31 @@ const RidesList = () => {
         }
     };
 
+    const handleCancelRequest = async (rideId) => {
+        if (!window.confirm('Are you sure you want to cancel your request?')) {
+            return;
+        }
+
+        try {
+            await axios.post(
+                `/rides/${rideId}/cancel-request`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }
+            );
+            
+            setRideRequests(prev => ({
+                ...prev,
+                [rideId]: 'none'
+            }));
+            alert('Request cancelled successfully');
+            refetch(); // Refresh the rides list
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error canceling request');
+        }
+    };
+
     const getRequestButton = (ride) => {
         if (!user || user.netid === ride.creator_netid) {
             return null;
@@ -106,10 +130,10 @@ const RidesList = () => {
         if (requestStatus === 'pending') {
             return (
                 <button
-                    disabled
-                    className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed"
+                    onClick={() => handleCancelRequest(ride.id)}
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
                 >
-                    Request Pending
+                    Cancel Request
                 </button>
             );
         }
@@ -175,6 +199,7 @@ const RidesList = () => {
                             <option value="Newark Airport">Newark Airport</option>
                             <option value="LaGuardia Airport">LaGuardia Airport</option>
                             <option value="Philadelphia Airport">Philadelphia Airport</option>
+                            <option value="OTHER">Other</option>
                         </select>
                     </div>
                     <div>

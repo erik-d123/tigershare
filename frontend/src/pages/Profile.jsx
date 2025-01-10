@@ -1,7 +1,7 @@
 // frontend/src/pages/Profile.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import axios from '../config/axios';
 import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,34 +16,34 @@ const Profile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const fetchData = async () => {
+        try {
+            if (!user || !user.id) return;
+            
+            const token = localStorage.getItem('token');
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+
+            // Fetch all data in parallel
+            const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
+                axios.get(`/api/rides/created-by/${user.id}`, { headers }),
+                axios.get(`/api/rides/joined-by/${user.id}`, { headers }),
+                axios.get('/api/rides/pending-requests', { headers })
+            ]);
+
+            setMyCreatedRides(createdResponse.data || []);
+            setMyJoinedRides(joinedResponse.data || []);
+            setPendingRequests(pendingResponse.data || []);
+            setLoading(false);
+        } catch (err) {
+            console.error('Error fetching data:', err);
+            setError('Error fetching data');
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                if (!user || !user.id) return;
-                
-                const token = localStorage.getItem('token');
-                const headers = {
-                    'Authorization': `Bearer ${token}`
-                };
-
-                // Fetch all data in parallel
-                const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
-                    axios.get(`/api/rides/created-by/${user.id}`, { headers }),
-                    axios.get(`/api/rides/joined-by/${user.id}`, { headers }),
-                    axios.get('/api/rides/pending-requests', { headers })
-                ]);
-
-                setMyCreatedRides(createdResponse.data || []);
-                setMyJoinedRides(joinedResponse.data || []);
-                setPendingRequests(pendingResponse.data || []);
-                setLoading(false);
-            } catch (err) {
-                console.error('Error fetching data:', err);
-                setError('Error fetching data');
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, [user]);
 
@@ -62,11 +62,7 @@ const Profile = () => {
                 }
             );
             
-            // Refresh the rides data
-            const response = await axios.get(`/api/rides/created-by/${user.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setMyCreatedRides(response.data);
+            await fetchData(); // Refresh all data
             alert('Ride cancelled successfully');
         } catch (error) {
             console.error('Cancel ride error:', error);
@@ -89,11 +85,7 @@ const Profile = () => {
                 }
             );
             
-            // Refresh joined rides
-            const response = await axios.get(`/api/rides/joined-by/${user.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setMyJoinedRides(response.data);
+            await fetchData(); // Refresh all data
             alert('Successfully left the ride');
         } catch (error) {
             console.error('Leave ride error:', error);
@@ -112,6 +104,21 @@ const Profile = () => {
         } catch (error) {
             console.error('Error fetching participants:', error);
             alert('Error fetching participants');
+        }
+    };
+
+    const handleRequestResponse = async (rideId, requesterId, action) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.get(`/api/rides/${rideId}/${action}/${requesterId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+    
+            await fetchData(); // Refresh all data
+            alert(`Request ${action === 'approve' ? 'approved' : 'denied'} successfully`);
+        } catch (error) {
+            console.error(`Error ${action}ing request:`, error);
+            alert(error.response?.data?.message || `Error ${action}ing request`);
         }
     };
 
@@ -153,16 +160,34 @@ const Profile = () => {
                         <div className="space-y-4">
                             {pendingRequests.map(request => (
                                 <div key={request.id} className="border rounded-lg p-4">
-                                    <p className="font-medium">{request.requester_name} ({request.requester_netid})</p>
-                                    <p className="text-gray-600">
-                                        Requesting to join ride to {request.destination}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        Departure: {moment(request.departure_time).format('MMMM D, YYYY h:mm A')}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        Requested {moment(request.created_at).fromNow()}
-                                    </p>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-medium">{request.requester_name} ({request.requester_netid})</p>
+                                            <p className="text-gray-600">
+                                                Requesting to join ride to {request.destination}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Departure: {moment(request.departure_time).format('MMMM D, YYYY h:mm A')}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Requested {moment(request.created_at).fromNow()}
+                                            </p>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={() => handleRequestResponse(request.ride_id, request.requester_id, 'approve')}
+                                                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleRequestResponse(request.ride_id, request.requester_id, 'deny')}
+                                                className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                            >
+                                                Deny
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>

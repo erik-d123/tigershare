@@ -1,7 +1,7 @@
 // frontend/src/pages/CreateRide.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../config/axios';
 import { useAuth } from '../contexts/AuthContext';
 
 const CreateRide = () => {
@@ -9,6 +9,7 @@ const CreateRide = () => {
     const { user } = useAuth();
     const [formData, setFormData] = useState({
         destination: '',
+        customDestination: '',
         departure_time: '',
         available_seats: '',
         total_fare: '',
@@ -18,15 +19,31 @@ const CreateRide = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate custom destination and notes
+        if (formData.destination === 'OTHER') {
+            if (!formData.customDestination.trim()) {
+                setError('Please specify your destination');
+                return;
+            }
+            if (!formData.notes.trim()) {
+                setError('Please provide details about the destination in the notes section');
+                return;
+            }
+        }
+
         try {
-            console.log('Submitting new ride:', formData);
+            const submitData = {
+                ...formData,
+                destination: formData.destination === 'OTHER' ? formData.customDestination : formData.destination
+            };
+            delete submitData.customDestination;
+
             const token = localStorage.getItem('token');
-            const response = await axios.post('/api/rides/create', formData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await axios.post('/api/rides/create', submitData, {
+                headers: { Authorization: `Bearer ${token}` }
             });
-            console.log('Ride created:', response.data);
+            
             navigate('/rides');
         } catch (error) {
             console.error('Create ride error:', error);
@@ -40,6 +57,7 @@ const CreateRide = () => {
             ...prev,
             [name]: value
         }));
+        setError(''); // Clear error when user makes changes
     };
 
     if (!user) {
@@ -75,8 +93,26 @@ const CreateRide = () => {
                             <option value="Newark Airport">Newark Airport</option>
                             <option value="LaGuardia Airport">LaGuardia Airport</option>
                             <option value="Philadelphia Airport">Philadelphia Airport</option>
+                            <option value="OTHER">Other (specify)</option>
                         </select>
                     </div>
+
+                    {formData.destination === 'OTHER' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Specify Destination *
+                            </label>
+                            <input
+                                type="text"
+                                name="customDestination"
+                                value={formData.customDestination}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-princeton-orange focus:border-princeton-orange"
+                                placeholder="Enter your destination"
+                                required
+                            />
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -126,13 +162,14 @@ const CreateRide = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Notes (Optional)
+                            Notes {formData.destination === 'OTHER' && '(Required for custom destinations)'}
                         </label>
                         <textarea
                             name="notes"
                             value={formData.notes}
                             onChange={handleChange}
                             rows="3"
+                            required={formData.destination === 'OTHER'}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-princeton-orange focus:border-princeton-orange"
                             placeholder="Add any additional information about the ride..."
                         />

@@ -450,4 +450,26 @@ router.post('/:rideId/cancel', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/:rideId/cancel-request', authenticateToken, async (req, res) => {
+    try {
+        const { rideId } = req.params;
+        const userId = req.user.id;
+
+        // Delete the request
+        const result = await db.query(
+            'DELETE FROM ride_requests WHERE ride_id = $1 AND requester_id = $2 AND status = $3',
+            [rideId, userId, 'pending']
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Request not found or already processed' });
+        }
+
+        res.json({ message: 'Request cancelled successfully' });
+    } catch (error) {
+        console.error('Cancel request error:', error);
+        res.status(500).json({ message: 'Error cancelling request' });
+    }
+});
+
 module.exports = router;
