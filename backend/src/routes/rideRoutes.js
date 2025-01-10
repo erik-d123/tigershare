@@ -196,17 +196,23 @@ router.post('/:rideId/request', authenticateToken, async (req, res) => {
 
         const ride = rideInfo.rows[0];
 
-        // Check if already requested
+        // Check for existing active request
         const existingRequest = await db.query(
-            'SELECT * FROM ride_requests WHERE ride_id = $1 AND requester_id = $2',
-            [rideId, requesterId]
+            'SELECT * FROM ride_requests WHERE ride_id = $1 AND requester_id = $2 AND status = $3',
+            [rideId, requesterId, 'pending']
         );
 
         if (existingRequest.rows.length > 0) {
             return res.status(400).json({ message: 'Already requested to join this ride' });
         }
 
-        // Create request
+        // Delete any previous denied requests
+        await db.query(
+            'DELETE FROM ride_requests WHERE ride_id = $1 AND requester_id = $2',
+            [rideId, requesterId]
+        );
+
+        // Create new request
         await db.query(
             'INSERT INTO ride_requests (ride_id, requester_id, status) VALUES ($1, $2, $3)',
             [rideId, requesterId, 'pending']
@@ -223,6 +229,7 @@ router.post('/:rideId/request', authenticateToken, async (req, res) => {
             );
         } catch (emailError) {
             console.error('Email sending error:', emailError);
+            // Continue even if email fails
         }
 
         res.json({ message: 'Request sent successfully' });

@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from '../config/axios';
-import moment from 'moment';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../utils/dateUtils';
 
 const RidesList = () => {
     const navigate = useNavigate();
@@ -83,46 +83,9 @@ const RidesList = () => {
         }
     };
 
-    const handleCancelRequest = async (rideId) => {
-        if (!window.confirm('Are you sure you want to cancel your request?')) {
-            return;
-        }
-
-        try {
-            await axios.post(
-                `/rides/${rideId}/cancel-request`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }
-            );
-            
-            setRideRequests(prev => ({
-                ...prev,
-                [rideId]: 'none'
-            }));
-            alert('Request cancelled successfully');
-            refetch(); // Refresh the rides list
-        } catch (error) {
-            alert(error.response?.data?.message || 'Error canceling request');
-        }
-    };
-
     const getRequestButton = (ride) => {
         if (!user || user.netid === ride.creator_netid) {
             return null;
-        }
-
-        // Check if the ride is full
-        if (parseInt(ride.current_participants) >= parseInt(ride.available_seats)) {
-            return (
-                <button
-                    disabled
-                    className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed"
-                >
-                    Ride Full
-                </button>
-            );
         }
 
         const requestStatus = rideRequests[ride.id];
@@ -130,10 +93,10 @@ const RidesList = () => {
         if (requestStatus === 'pending') {
             return (
                 <button
-                    onClick={() => handleCancelRequest(ride.id)}
-                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                    disabled
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-md cursor-not-allowed"
                 >
-                    Cancel Request
+                    Request Pending
                 </button>
             );
         }
@@ -234,7 +197,7 @@ const RidesList = () => {
                                         {ride.destination}
                                     </h3>
                                     <p className="text-gray-600">
-                                        {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
+                                        {formatDateTime(ride.departure_time)}
                                     </p>
                                     <p className="text-gray-600">
                                         Posted by: {ride.creator_name || ride.creator_netid}

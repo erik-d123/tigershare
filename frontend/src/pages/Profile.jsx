@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from '../config/axios';
-import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../utils/dateUtils';
 
 const Profile = () => {
     const { user } = useAuth();
@@ -169,10 +169,10 @@ const Profile = () => {
                                                 Requesting to join ride to {request.destination}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                Departure: {moment(request.departure_time).format('MMMM D, YYYY h:mm A')}
+                                                Departure: {formatDateTime(request.departure_time)}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                Requested {moment(request.created_at).fromNow()}
+                                                Requested: {formatDateTime(request.created_at)}
                                             </p>
                                         </div>
                                         <div className="flex space-x-2">
@@ -209,7 +209,7 @@ const Profile = () => {
                                         <div>
                                             <h3 className="font-semibold">{ride.destination}</h3>
                                             <p className="text-sm text-gray-600">
-                                                {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
+                                                {formatDateTime(ride.departure_time)}
                                             </p>
                                             <p className="text-sm text-gray-600">
                                                 {parseInt(ride.current_participants)}/{parseInt(ride.available_seats)} seats filled
@@ -259,7 +259,7 @@ const Profile = () => {
                                         <div>
                                             <h3 className="font-semibold">{ride.destination}</h3>
                                             <p className="text-sm text-gray-600">
-                                                {moment(ride.departure_time).format('MMMM D, YYYY h:mm A')}
+                                                {formatDateTime(ride.departure_time)}
                                             </p>
                                             <p className="text-sm text-gray-600">
                                                 Posted by: {ride.creator_name || ride.creator_netid}

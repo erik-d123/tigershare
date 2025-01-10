@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../config/axios';
 import { useAuth } from '../contexts/AuthContext';
+import { convertToEST } from '../utils/dateUtils';
 
 const CreateRide = () => {
     const navigate = useNavigate();
@@ -24,16 +25,18 @@ const CreateRide = () => {
         setError('');
         
         try {
-            // Prepare the data for submission
+            // Convert to EST before submitting
+            const estTime = convertToEST(formData.departure_time);
+
             const submitData = {
                 destination: formData.destination === 'OTHER' ? formData.customDestination : formData.destination,
-                departure_time: formData.departure_time,
+                departure_time: estTime,
                 available_seats: parseInt(formData.available_seats),
                 total_fare: parseFloat(formData.total_fare),
                 notes: formData.notes
             };
 
-            console.log('Submitting data:', submitData);
+            console.log('Submitting ride data:', submitData);
             await axios.post('/rides/create', submitData);
             navigate('/rides');
         } catch (error) {
@@ -109,7 +112,7 @@ const CreateRide = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Departure Time
+                            Departure Time (EST)
                         </label>
                         <input
                             type="datetime-local"
@@ -119,6 +122,7 @@ const CreateRide = () => {
                             onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-princeton-orange focus:border-princeton-orange"
                         />
+                        <p className="mt-1 text-sm text-gray-500">All times are in Eastern Time (EST/EDT)</p>
                     </div>
 
                     <div>
