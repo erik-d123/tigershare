@@ -3,8 +3,8 @@ import axios from 'axios';
 
 const isDevelopment = import.meta.env.VITE_NODE_ENV === 'development';
 const baseURL = isDevelopment 
-    ? 'http://localhost:3001/api'
-    : `${import.meta.env.VITE_API_URL}/api`;
+    ? 'http://localhost:3001'  // Remove /api from here
+    : import.meta.env.VITE_API_URL;
 
 const instance = axios.create({
     baseURL,
@@ -21,11 +21,17 @@ instance.interceptors.request.use(request => {
         request.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Add /api prefix to URL if it doesn't start with /auth
+    if (!request.url.startsWith('/auth')) {
+        request.url = `/api${request.url}`;
+    }
+
     console.log('Request:', {
         method: request.method,
         url: request.url,
         baseURL: request.baseURL,
-        headers: request.headers
+        headers: request.headers,
+        data: request.data
     });
 
     return request;

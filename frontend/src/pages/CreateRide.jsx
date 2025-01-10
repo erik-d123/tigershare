@@ -23,13 +23,6 @@ const CreateRide = () => {
         setLoading(true);
         setError('');
         
-        // Validate custom destination
-        if (formData.destination === 'OTHER' && !formData.customDestination.trim()) {
-            setError('Please specify your destination');
-            setLoading(false);
-            return;
-        }
-
         try {
             // Prepare the data for submission
             const submitData = {
@@ -40,10 +33,8 @@ const CreateRide = () => {
                 notes: formData.notes
             };
 
-            console.log('Submitting ride data:', submitData);
-
-            const response = await axios.post('/api/rides/create', submitData);
-            console.log('Ride created:', response.data);
+            console.log('Submitting data:', submitData);
+            await axios.post('/rides/create', submitData);
             navigate('/rides');
         } catch (error) {
             console.error('Create ride error:', error);
@@ -186,8 +177,9 @@ const CreateRide = () => {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="px-6 py-2 bg-princeton-orange text-white rounded-md hover:bg-princeton-orange/90 transition-colors disabled:opacity-50"
+                            disabled={loading || (formData.destination === 'OTHER' && !formData.customDestination)}
+                            className="px-6 py-2 bg-princeton-orange text-white rounded-md hover:bg-princeton-orange/90 
+                                     transition-colors disabled:opacity-50"
                         >
                             {loading ? 'Creating...' : 'Create Ride'}
                         </button>

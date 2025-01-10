@@ -22,45 +22,27 @@ const Profile = () => {
             navigate('/login');
             return;
         }
+
         const fetchData = async () => {
             try {
-                if (!user || !user.id) {
-                    setLoading(false);
-                    return;
-                }
-
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    navigate('/login');
-                    return;
-                }
-
-                setMyCreatedRides([]); // Initialize with empty arrays
+                // Initialize with empty arrays in case of error
+                setMyCreatedRides([]);
                 setMyJoinedRides([]);
                 setPendingRequests([]);
 
-                const headers = {
-                    'Authorization': `Bearer ${token}`
-                };
+                // Fetch all data
+                const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
+                    axios.get(`/rides/created-by/${user.id}`),
+                    axios.get(`/rides/joined-by/${user.id}`),
+                    axios.get('/rides/pending-requests')
+                ]);
 
-                try {
-                    const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
-                        axios.get(`/rides/created-by/${user.id}`),
-                        axios.get(`/rides/joined-by/${user.id}`),
-                        axios.get('/rides/pending-requests')
-                    ]);
-
-                    setMyCreatedRides(createdResponse.data || []);
-                    setMyJoinedRides(joinedResponse.data || []);
-                    setPendingRequests(pendingResponse.data || []);
-                } catch (error) {
-                    console.error('Error fetching ride data:', error);
-                    // Don't set error state, just keep the empty arrays
-                }
-
+                setMyCreatedRides(createdResponse.data || []);
+                setMyJoinedRides(joinedResponse.data || []);
+                setPendingRequests(pendingResponse.data || []);
                 setLoading(false);
             } catch (err) {
-                console.error('Error in fetchData:', err);
+                console.error('Error fetching data:', err);
                 setError('Error loading profile data');
                 setLoading(false);
             }
@@ -69,8 +51,71 @@ const Profile = () => {
         fetchData();
     }, [user, navigate]);
 
-    // Rest of your component code remains the same...
+    const handleCancelRide = async (rideId) => {
+        if (!window.confirm('Are you sure you want to cancel this ride?')) {
+            return;
+        }
     
+        try {
+            await axios.post(`/rides/${rideId}/cancel`);
+            // Refresh the data
+            const response = await axios.get(`/rides/created-by/${user.id}`);
+            setMyCreatedRides(response.data || []);
+            alert('Ride cancelled successfully');
+        } catch (error) {
+            console.error('Cancel ride error:', error);
+            alert(error.response?.data?.message || 'Error canceling ride');
+        }
+    };
+
+    const handleLeaveRide = async (rideId) => {
+        if (!window.confirm('Are you sure you want to leave this ride?')) {
+            return;
+        }
+    
+        try {
+            await axios.post(`/rides/${rideId}/leave`);
+            // Refresh joined rides
+            const response = await axios.get(`/rides/joined-by/${user.id}`);
+            setMyJoinedRides(response.data || []);
+            alert('Successfully left the ride');
+        } catch (error) {
+            console.error('Leave ride error:', error);
+            alert(error.response?.data?.message || 'Error leaving ride');
+        }
+    };
+
+    const handleViewParticipants = async (rideId) => {
+        try {
+            const response = await axios.get(`/rides/${rideId}/participants`);
+            setSelectedRideParticipants(response.data);
+            setViewingParticipants(true);
+        } catch (error) {
+            console.error('Error fetching participants:', error);
+            alert('Error fetching participants');
+        }
+    };
+
+    const handleRequestResponse = async (rideId, requesterId, action) => {
+        try {
+            await axios.get(`/rides/${rideId}/${action}/${requesterId}`);
+            
+            // Refresh pending requests and created rides
+            const [pendingResponse, createdResponse] = await Promise.all([
+                axios.get('/rides/pending-requests'),
+                axios.get(`/rides/created-by/${user.id}`)
+            ]);
+            
+            setPendingRequests(pendingResponse.data || []);
+            setMyCreatedRides(createdResponse.data || []);
+            
+            alert(`Request ${action === 'approve' ? 'approved' : 'denied'} successfully`);
+        } catch (error) {
+            console.error(`Error ${action}ing request:`, error);
+            alert(error.response?.data?.message || `Error ${action}ing request`);
+        }
+    };
+
     if (!user) {
         return (
             <div className="flex justify-center items-center h-64">
