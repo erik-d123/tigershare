@@ -13,7 +13,11 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const response = await axios.get('/auth/verify');
+                    const response = await axios.get('/auth/verify', {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
                     console.log('Verify response:', response);
                     setUser(response.data.user);
                 } catch (error) {
@@ -36,8 +40,14 @@ export const AuthProvider = ({ children }) => {
                 throw new Error('No token provided');
             }
 
-            const response = await axios.get('/auth/verify');
-            console.log('Auth callback response:', response);
+            localStorage.setItem('token', token);
+            
+            const response = await axios.get('/auth/verify', {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            
             setUser(response.data.user);
             return response.data.user;
         } catch (error) {

@@ -16,38 +16,40 @@ const CreateRide = () => {
         notes: ''
     });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
         
-        // Validate custom destination and notes
-        if (formData.destination === 'OTHER') {
-            if (!formData.customDestination.trim()) {
-                setError('Please specify your destination');
-                return;
-            }
-            if (!formData.notes.trim()) {
-                setError('Please provide details about the destination in the notes section');
-                return;
-            }
+        // Validate custom destination
+        if (formData.destination === 'OTHER' && !formData.customDestination.trim()) {
+            setError('Please specify your destination');
+            setLoading(false);
+            return;
         }
 
         try {
+            // Prepare the data for submission
             const submitData = {
-                ...formData,
-                destination: formData.destination === 'OTHER' ? formData.customDestination : formData.destination
+                destination: formData.destination === 'OTHER' ? formData.customDestination : formData.destination,
+                departure_time: formData.departure_time,
+                available_seats: parseInt(formData.available_seats),
+                total_fare: parseFloat(formData.total_fare),
+                notes: formData.notes
             };
-            delete submitData.customDestination;
 
-            const token = localStorage.getItem('token');
-            const response = await axios.post('/api/rides/create', submitData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
+            console.log('Submitting ride data:', submitData);
+
+            const response = await axios.post('/api/rides/create', submitData);
+            console.log('Ride created:', response.data);
             navigate('/rides');
         } catch (error) {
             console.error('Create ride error:', error);
             setError(error.response?.data?.message || 'Error creating ride');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -162,14 +164,13 @@ const CreateRide = () => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Notes {formData.destination === 'OTHER' && '(Required for custom destinations)'}
+                            Notes (Optional)
                         </label>
                         <textarea
                             name="notes"
                             value={formData.notes}
                             onChange={handleChange}
                             rows="3"
-                            required={formData.destination === 'OTHER'}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-princeton-orange focus:border-princeton-orange"
                             placeholder="Add any additional information about the ride..."
                         />
@@ -185,9 +186,10 @@ const CreateRide = () => {
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2 bg-princeton-orange text-white rounded-md hover:bg-princeton-orange/90 transition-colors"
+                            disabled={loading}
+                            className="px-6 py-2 bg-princeton-orange text-white rounded-md hover:bg-princeton-orange/90 transition-colors disabled:opacity-50"
                         >
-                            Create Ride
+                            {loading ? 'Creating...' : 'Create Ride'}
                         </button>
                     </div>
                 </form>

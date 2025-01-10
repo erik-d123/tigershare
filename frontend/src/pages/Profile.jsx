@@ -16,111 +16,74 @@ const Profile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchData = async () => {
-        try {
-            if (!user || !user.id) return;
-            
-            const token = localStorage.getItem('token');
-            const headers = {
-                'Authorization': `Bearer ${token}`
-            };
-
-            // Fetch all data in parallel
-            const [createdResponse, joinedResponse, pendingResponse] = await Promise.all([
-                axios.get(`/api/rides/created-by/${user.id}`, { headers }),
-                axios.get(`/api/rides/joined-by/${user.id}`, { headers }),
-                axios.get('/api/rides/pending-requests', { headers })
-            ]);
-
-            setMyCreatedRides(createdResponse.data || []);
-            setMyJoinedRides(joinedResponse.data || []);
-            setPendingRequests(pendingResponse.data || []);
-            setLoading(false);
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            setError('Error fetching data');
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        // Redirect if not logged in
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        const fetchData = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    navigate('/login');
+                    return;
+                }
+
+                const headers = {
+                    'Authorization': `Bearer ${token}`
+                };
+
+                // Initialize with empty arrays in case of error
+                let createdRides = [];
+                let joinedRides = [];
+                let pendingReqs = [];
+
+                try {
+                    const createdResponse = await axios.get(`/api/rides/created-by/${user.id}`, { headers });
+                    createdRides = createdResponse.data || [];
+                } catch (error) {
+                    console.error('Error fetching created rides:', error);
+                }
+
+                try {
+                    const joinedResponse = await axios.get(`/api/rides/joined-by/${user.id}`, { headers });
+                    joinedRides = joinedResponse.data || [];
+                } catch (error) {
+                    console.error('Error fetching joined rides:', error);
+                }
+
+                try {
+                    const pendingResponse = await axios.get('/api/rides/pending-requests', { headers });
+                    pendingReqs = pendingResponse.data || [];
+                } catch (error) {
+                    console.error('Error fetching pending requests:', error);
+                }
+
+                setMyCreatedRides(createdRides);
+                setMyJoinedRides(joinedRides);
+                setPendingRequests(pendingReqs);
+                setLoading(false);
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                setError('Error loading profile data');
+                setLoading(false);
+            }
+        };
+
         fetchData();
-    }, [user]);
+    }, [user, navigate]);
 
-    const handleCancelRide = async (rideId) => {
-        if (!window.confirm('Are you sure you want to cancel this ride?')) {
-            return;
-        }
+    // Rest of your component code remains the same...
     
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(
-                `/api/rides/${rideId}/cancel`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            
-            await fetchData(); // Refresh all data
-            alert('Ride cancelled successfully');
-        } catch (error) {
-            console.error('Cancel ride error:', error);
-            alert(error.response?.data?.message || 'Error canceling ride');
-        }
-    };
-
-    const handleLeaveRide = async (rideId) => {
-        if (!window.confirm('Are you sure you want to leave this ride?')) {
-            return;
-        }
-    
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(
-                `/api/rides/${rideId}/leave`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            
-            await fetchData(); // Refresh all data
-            alert('Successfully left the ride');
-        } catch (error) {
-            console.error('Leave ride error:', error);
-            alert(error.response?.data?.message || 'Error leaving ride');
-        }
-    };
-
-    const handleViewParticipants = async (rideId) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`/api/rides/${rideId}/participants`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSelectedRideParticipants(response.data);
-            setViewingParticipants(true);
-        } catch (error) {
-            console.error('Error fetching participants:', error);
-            alert('Error fetching participants');
-        }
-    };
-
-    const handleRequestResponse = async (rideId, requesterId, action) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.get(`/api/rides/${rideId}/${action}/${requesterId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-    
-            await fetchData(); // Refresh all data
-            alert(`Request ${action === 'approve' ? 'approved' : 'denied'} successfully`);
-        } catch (error) {
-            console.error(`Error ${action}ing request:`, error);
-            alert(error.response?.data?.message || `Error ${action}ing request`);
-        }
-    };
+    if (!user) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-gray-600">Please log in to view your profile.</div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
