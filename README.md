@@ -1,6 +1,6 @@
 # TigerShare
 
-A secure ride-sharing platform built specifically for Princeton University students. TigerShare enables students to coordinate rides to common destinations (like airports) and split travel costs efficiently. The platform features Princeton CAS authentication (coming soon), real-time ride management, and email notifications.
+A secure ride-sharing platform built specifically for Princeton University students. TigerShare enables students to coordinate rides to common destinations (like airports) and split travel costs efficiently. The platform features Princeton CAS authentication (pending), real-time ride management, and email notifications.
 
 ## Features
 
