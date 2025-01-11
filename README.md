@@ -1,60 +1,53 @@
 # TigerShare
 
-A secure ride-sharing platform built specifically for Princeton University students. TigerShare enables students to coordinate rides to common destinations (like airports) and split travel costs efficiently. The platform features Princeton CAS authentication, real-time ride management, and email notifications.
+A secure ride-sharing platform built specifically for Princeton University students. TigerShare enables students to coordinate rides to common destinations (like airports) and split travel costs efficiently. The platform features Princeton CAS authentication (coming soon), real-time ride management, and email notifications.
 
 ## Features
 
-* **Secure Authentication**
-   * Princeton CAS integration
+* **Authentication**
+   * Princeton CAS integration (coming soon)
+   * Alternative email login for testing
    * Protected routes and content
    * JWT-based session management
    * User profiles with full name support
 
 * **Ride Management**
-   * Create and join rides
+   * Create and join rides to common destinations
    * Real-time seat availability tracking
-   * Automatic fare per person calculation
+   * Support for custom destinations
    * Request approval system
    * Email notifications for ride updates
+   * View ride participants
+   * EST timezone handling for all rides
 
 * **User Experience**
    * Clean, responsive interface
-   * Real-time updates
-   * Intuitive ride creation process
-   * Profile-based ride filtering
+   * Intuitive ride creation and management
+   * Filter rides by destination and date
+   * Profile-based ride management
+   * View all joined and created rides
 
 * **Communication**
    * Email notifications for ride requests
    * Request approval/denial system
-   * Ride status updates
-   * Automated passenger notifications
+   * View pending requests
+   * Cancel or leave rides
 
 ## Technical Stack
 
 ### Frontend
-* React (Vite)
+* React 18 (Vite)
 * TailwindCSS
 * React Query
 * Axios
-* Moment.js
+* Moment.js with timezone support
 
 ### Backend
-* Node.js
+* Node.js 18
 * Express
 * PostgreSQL
 * JSON Web Tokens (JWT)
 * Nodemailer
-
-### Authentication
-* Princeton CAS (Central Authentication Service)
-* JWT for session management
-
-## Prerequisites
-* Node.js (v14 or later)
-* npm or yarn
-* PostgreSQL
-* Princeton CAS credentials
-* Gmail account for email notifications
 
 ## Installation
 
@@ -66,16 +59,8 @@ cd tiger-share
 
 2. Install dependencies:
 ```bash
-# Install root dependencies
-npm install
-
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Install backend dependencies
-cd ../backend
-npm install
+# Install all dependencies
+npm run install-all
 ```
 
 3. Set up environment variables:
@@ -108,58 +93,22 @@ EMAIL_USER=your_email@gmail.com
 EMAIL_APP_PASSWORD=your_app_password
 ```
 
+Frontend (.env.development):
+```env
+VITE_API_URL=http://localhost:3001
+VITE_NODE_ENV=development
+```
+
 4. Set up the database:
 ```sql
--- Create the database tables using the provided schema
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    netid VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    full_name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    phone VARCHAR(20),
-    phone_verified BOOLEAN DEFAULT false
-);
-
--- Additional table creation scripts...
+-- Execute the schema.sql file to create all necessary tables
 ```
 
 5. Start the development servers:
 ```bash
-# Start backend server
-cd backend
-npm run dev
-
-# In a new terminal, start frontend server
-cd frontend
+# Start both frontend and backend
 npm run dev
 ```
-
-## Usage
-
-1. Visit `http://localhost:5173` to access the platform
-2. Log in with Princeton NetID
-3. Set your display name (optional)
-4. Create or join rides
-5. Manage ride requests through email notifications
-
-## API Endpoints
-
-### Authentication
-* `GET /api/auth/cas/login` - Initiate CAS login
-* `GET /api/auth/cas/callback` - CAS authentication callback
-* `GET /api/auth/verify` - Verify JWT token
-
-### Rides
-* `GET /api/rides` - Get all active rides
-* `POST /api/rides/create` - Create a new ride
-* `POST /api/rides/:rideId/request` - Request to join a ride
-* `GET /api/rides/:rideId/approve/:requesterId` - Approve ride request
-* `GET /api/rides/:rideId/deny/:requesterId` - Deny ride request
-
-### Users
-* `POST /api/users/set-name` - Set user's display name
-* `GET /api/users/needs-name` - Check if user needs to set name
 
 ## Project Structure
 ```
@@ -168,37 +117,50 @@ tiger-share/
 │   ├── src/
 │   │   ├── config/
 │   │   │   └── database.js
+│   │   ├── controllers/
+│   │   │   ├── rideController.js
+│   │   │   └── userController.js
+│   │   ├── middleware/
+│   │   │   └── auth.js
 │   │   ├── routes/
+│   │   │   ├── adminRoutes.js
 │   │   │   ├── authRoutes.js
 │   │   │   ├── rideRoutes.js
 │   │   │   └── userRoutes.js
-│   │   ├── utils/
+│   │   ├── services/
 │   │   │   └── emailService.js
 │   │   └── server.js
-│   └── .env
-└── frontend/
+├── frontend/
     ├── src/
     │   ├── components/
     │   ├── contexts/
     │   ├── pages/
+    │   ├── utils/
     │   └── App.jsx
+    ├── .env.development
     └── tailwind.config.js
 ```
 
-## Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## API Endpoints
+
+### Authentication
+* `POST /api/auth/simple-login` - Login with email (testing)
+* `GET /api/auth/cas/login` - Initiate CAS login (coming soon)
+* `GET /api/auth/verify` - Verify JWT token
+
+### Rides
+* `GET /api/rides` - Get all active rides
+* `POST /api/rides/create` - Create a new ride
+* `POST /api/rides/:rideId/request` - Request to join a ride
+* `GET /api/rides/:rideId/approve/:requesterId` - Approve ride request
+* `GET /api/rides/:rideId/deny/:requesterId` - Deny ride request
+* `POST /api/rides/:rideId/leave` - Leave a ride
+* `POST /api/rides/:rideId/cancel` - Cancel a ride
+* `GET /api/rides/:rideId/participants` - View ride participants
+* `GET /api/rides/pending-requests` - Get pending ride requests
+
+## Deployment
+The application is deployed on Heroku: https://tigershare-9b54f63395d5.herokuapp.com
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-* Princeton University for CAS authentication
-* React team for the excellent framework
-* TailwindCSS for the utility-first CSS framework
-* All contributors who have helped shape this project
-
-Would you like me to add or modify any sections?
